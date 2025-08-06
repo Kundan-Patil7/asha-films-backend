@@ -4,8 +4,14 @@ const {
   updateBanner,
   getAboutUs,
   updateAboutUs,
+  createProject,
+  getProjects,
+  updateProject,
+  deleteProject,
+  getProjectById,
 } = require("../controllers/admin/contentController");
 const bannerUpload = require("../middleware/banners");
+const posterUpload = require("../middleware/poster");
 const router = express.Router();
 
 // Banner Routes
@@ -16,4 +22,10 @@ router.put("/banners/:id", bannerUpload, updateBanner);
 router.get("/about-us", getAboutUs);
 router.put("/about-us", updateAboutUs);
 
+//  projects
+router.post("/projects", posterUpload, createProject);
+router.get("/projects", getProjects);
+router.put("/projects/:id", posterUpload, updateProject);
+router.delete("/projects/:id", deleteProject);
+router.get("/projects/:id", getProjectById);
 module.exports = router;

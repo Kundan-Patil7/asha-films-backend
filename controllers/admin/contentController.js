@@ -13,6 +13,7 @@ const unlinkAsync = util.promisify(fs.unlink);
 
 // Constants
 const BANNER_DIR = path.join(process.cwd(), "uploads", "banners");
+const POSTER_DIR = path.join(process.cwd(), "uploads", "posters");
 
 // Helper function to remove file if exists
 async function removeFileIfExists(filePath) {
@@ -238,9 +239,273 @@ const updateAboutUs = async (req, res) => {
   }
 };
 
+
+
+// Remove file helper
+async function removeFileIfExists(filePath) {
+  if (await existsAsync(filePath)) {
+    await unlinkAsync(filePath);
+  }
+}
+
+// Build URL helper
+function buildFileUrl(req, filename, folder = "posters") {
+  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+}
+
+// Initialize projects table
+async function initProjectsTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id INT PRIMARY KEY AUTO_INCREMENT,
+      film_title VARCHAR(255) NOT NULL,
+      genre VARCHAR(100),
+      directed_by VARCHAR(255),
+      produced_by VARCHAR(255),
+      released_year INT,
+      language VARCHAR(100),
+      platform VARCHAR(100),
+      about_project TEXT,
+      poster_path VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+// 📌 Create new project
+const createProject = async (req, res) => {
+  try {
+    await initProjectsTable();
+
+    const {
+      film_title,
+      genre,
+      directed_by,
+      produced_by,
+      released_year,
+      language,
+      platform,
+      about_project,
+    } = req.body;
+
+    if (!film_title) {
+      return res.status(400).json({
+        success: false,
+        message: "Film title is required",
+      });
+    }
+
+    const posterFilename = req.file ? req.file.filename : null;
+
+    await db.query(
+      `INSERT INTO projects 
+      (film_title, genre, directed_by, produced_by, released_year, language, platform, about_project, poster_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        film_title,
+        genre,
+        directed_by,
+        produced_by,
+        released_year,
+        language,
+        platform,
+        about_project,
+        posterFilename,
+      ]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Project created successfully",
+    });
+  } catch (err) {
+    console.error("Error creating project:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create project",
+      error: err.message,
+    });
+  }
+};
+
+// 📌 Get all projects
+const getProjects = async (req, res) => {
+  try {
+    await initProjectsTable();
+
+    const [projects] = await db.query("SELECT * FROM projects ORDER BY created_at DESC");
+
+    const projectsWithUrls = projects.map((project) => ({
+      ...project,
+      poster_url: project.poster_path
+        ? buildFileUrl(req, project.poster_path)
+        : null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Projects fetched successfully",
+      projects: projectsWithUrls,
+    });
+  } catch (err) {
+    console.error("Error fetching projects:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch projects",
+      error: err.message,
+    });
+  }
+};
+
+// 📌 Update project
+const updateProject = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await initProjectsTable();
+
+    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [id]);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    const posterFilename = req.file ? req.file.filename : project.poster_path;
+
+    // Remove old poster if new one uploaded
+    if (req.file && project.poster_path) {
+      const oldPath = path.join(POSTER_DIR, project.poster_path);
+      await removeFileIfExists(oldPath);
+    }
+
+    const {
+      film_title,
+      genre,
+      directed_by,
+      produced_by,
+      released_year,
+      language,
+      platform,
+      about_project,
+    } = req.body;
+
+    await db.query(
+      `UPDATE projects SET film_title=?, genre=?, directed_by=?, produced_by=?, 
+        released_year=?, language=?, platform=?, about_project=?, poster_path=? 
+        WHERE id=?`,
+      [
+        film_title || project.film_title,
+        genre || project.genre,
+        directed_by || project.directed_by,
+        produced_by || project.produced_by,
+        released_year || project.released_year,
+        language || project.language,
+        platform || project.platform,
+        about_project || project.about_project,
+        posterFilename,
+        id,
+      ]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Project updated successfully",
+    });
+  } catch (err) {
+    console.error("Error updating project:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update project",
+      error: err.message,
+    });
+  }
+};
+
+// 📌 Delete project
+const deleteProject = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [id]);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    // Delete poster if exists
+    if (project.poster_path) {
+      const oldPath = path.join(POSTER_DIR, project.poster_path);
+      await removeFileIfExists(oldPath);
+    }
+
+    await db.query("DELETE FROM projects WHERE id = ?", [id]);
+
+    res.status(200).json({
+      success: true,
+      message: "Project deleted successfully",
+    });
+  } catch (err) {
+    console.error("Error deleting project:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete project",
+      error: err.message,
+    });
+  }
+};
+const getProjectById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await initProjectsTable();
+
+    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [id]);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    // Add poster URL if available
+    const projectWithUrl = {
+      ...project,
+      poster_url: project.poster_path
+        ? buildFileUrl(req, project.poster_path)
+        : null,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Project fetched successfully",
+      project: projectWithUrl,
+    });
+  } catch (err) {
+    console.error("Error fetching project:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch project",
+      error: err.message,
+    });
+  }
+};
+
 module.exports = {
   getBanners,
   updateBanner,
   getAboutUs,
   updateAboutUs,
+  createProject,
+  getProjects,
+  updateProject,
+  deleteProject,
+  getProjectById,
 };
