@@ -24,8 +24,8 @@ router.get("/banners", getBanners);
 router.put("/banners/:id", bannerUpload, updateBanner);
 
 // About Us Routes
-router.get("/about-us", getAboutUs);
-router.put("/about-us", updateAboutUs);
+router.get("/about", getAboutUs);
+router.put("/about", updateAboutUs);
 
 //  projects
 router.post("/projects", posterUpload, createProject);
