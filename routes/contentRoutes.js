@@ -10,9 +10,13 @@ const {
   deleteProject,
   getProjectById,
   getProjectsByType,
+  createClient,
+  getClients,
+  deleteClient,
 } = require("../controllers/admin/contentController");
 const bannerUpload = require("../middleware/banners");
 const posterUpload = require("../middleware/poster");
+const clientUpload = require("../middleware/client");
 const router = express.Router();
 
 // Banner Routes
@@ -31,4 +35,8 @@ router.delete("/projects/:id", deleteProject);
 router.get("/projects/:id", getProjectById);
 router.get("/projects/type/:type", getProjectsByType);
 
+//clients
+router.post("/clients", clientUpload, createClient);
+router.get("/clients", getClients);
+router.delete("/clients/:id", deleteClient);
 module.exports = router;

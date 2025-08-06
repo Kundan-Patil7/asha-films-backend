@@ -14,6 +14,7 @@ const unlinkAsync = util.promisify(fs.unlink);
 // Constants
 const BANNER_DIR = path.join(process.cwd(), "uploads", "banners");
 const POSTER_DIR = path.join(process.cwd(), "uploads", "posters");
+const CLIENT_DIR = path.join(process.cwd(), "uploads", "clients");
 
 // Helper function to remove file if exists
 async function removeFileIfExists(filePath) {
@@ -566,6 +567,126 @@ const getProjectsByType = async (req, res) => {
 };
 
 
+function buildFileUrl(req, filename, folder = "clients") {
+  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+}
+
+// Initialize clients table
+async function initClientsTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS clients (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      image_path VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+// 📌 Create client (POST)
+const createClient = async (req, res) => {
+  try {
+    await initClientsTable();
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Client image is required",
+      });
+    }
+
+    const filename = req.file.filename;
+
+    await db.query("INSERT INTO clients (image_path) VALUES (?)", [filename]);
+
+    res.status(201).json({
+      success: true,
+      message: "Client added successfully",
+    });
+  } catch (err) {
+    console.error("Error creating client:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create client",
+      error: err.message,
+    });
+  }
+};
+
+// 📌 Get all clients (GET)
+const getClients = async (req, res) => {
+  try {
+    await initClientsTable();
+
+    const [clients] = await db.query("SELECT * FROM clients ORDER BY created_at DESC");
+
+    if (!clients.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No clients found",
+      });
+    }
+
+    const clientsWithUrls = clients.map((client) => ({
+      ...client,
+      image_url: client.image_path
+        ? buildFileUrl(req, client.image_path)
+        : null,
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Clients fetched successfully",
+      clients: clientsWithUrls,
+    });
+  } catch (err) {
+    console.error("Error fetching clients:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch clients",
+      error: err.message,
+    });
+  }
+};
+
+// 📌 Delete client (DELETE)
+const deleteClient = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [[client]] = await db.query("SELECT * FROM clients WHERE id = ?", [id]);
+
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: "Client not found",
+      });
+    }
+
+    // Remove image if exists
+    if (client.image_path) {
+      const oldPath = path.join(CLIENT_DIR, client.image_path);
+      await removeFileIfExists(oldPath);
+    }
+
+    await db.query("DELETE FROM clients WHERE id = ?", [id]);
+
+    res.status(200).json({
+      success: true,
+      message: "Client deleted successfully",
+    });
+  } catch (err) {
+    console.error("Error deleting client:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete client",
+      error: err.message,
+    });
+  }
+};
+
+
+
 module.exports = {
   getBanners,
   updateBanner,
@@ -577,4 +698,7 @@ module.exports = {
   deleteProject,
   getProjectById,
   getProjectsByType,
+  createClient,
+  getClients,
+  deleteClient,
 };
