@@ -1,0 +1,268 @@
+# Database Schema for Actor/Model Profile System
+
+## 1. users (Authentication & Basic Info)
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    middle_name VARCHAR(255),
+    last_name VARCHAR(255),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    mobile VARCHAR(20) NOT NULL UNIQUE,
+    plan ENUM('free', 'premium') DEFAULT 'free',
+    suspended BOOLEAN DEFAULT FALSE,
+    suspended_from DATETIME NULL,
+    suspended_to DATETIME NULL,
+    blocked BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+## 2. user_personal_information
+CREATE TABLE user_personal_information (
+    user_id INT PRIMARY KEY,
+    date_of_birth DATE,
+    gender ENUM('Male', 'Female', 'Other', 'Prefer not to say'),
+    current_location VARCHAR(255),
+    country VARCHAR(100),
+    state VARCHAR(100),
+    city VARCHAR(100),
+    village VARCHAR(100),
+    passport VARCHAR(50),
+    driver_license VARCHAR(50),
+    cinta_card VARCHAR(50),
+    height_in_inches DECIMAL(5,2),
+    weight_kg DECIMAL(5,2),
+    shoe_size VARCHAR(10),
+    nationality VARCHAR(100),
+    language VARCHAR(255),
+    hobbies TEXT,
+    sports TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+## 3. user_physical_attributes
+CREATE TABLE user_physical_attributes (
+    user_id INT PRIMARY KEY,
+    body_type VARCHAR(100),
+    skin_tone VARCHAR(100),
+    moustache BOOLEAN,
+    hair_length VARCHAR(100),
+    hair_color VARCHAR(100),
+    beard BOOLEAN,
+    tattoo_piercing BOOLEAN,
+    measurement VARCHAR(255),
+    eye_color VARCHAR(100),
+    distinctive_features TEXT,
+    disabilities TEXT,
+    cup_size VARCHAR(50),
+    above_bust VARCHAR(50),
+    bust VARCHAR(50),
+    under_bust VARCHAR(50),
+    waist VARCHAR(50),
+    lower_waist VARCHAR(50),
+    hips VARCHAR(50),
+    arm_hole VARCHAR(50),
+    biceps VARCHAR(50),
+    shoulder VARCHAR(50),
+    sleeve_length VARCHAR(50),
+    trouser_length VARCHAR(50),
+    inseam_length VARCHAR(50),
+    upper_thigh VARCHAR(50),
+    till_elbow VARCHAR(50),
+    lower_thigh VARCHAR(50),
+    collar VARCHAR(50),
+    fork VARCHAR(50),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+## 4. user_transportation
+CREATE TABLE user_transportation (
+    user_id INT PRIMARY KEY,
+    two_wheeler BOOLEAN DEFAULT FALSE,
+    four_wheeler BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+## 5. user_roles_and_representation
+CREATE TABLE user_roles_and_representation (
+    user_id INT PRIMARY KEY,
+    lead_roles BOOLEAN DEFAULT FALSE,
+    supporting_roles BOOLEAN DEFAULT FALSE,
+    background_extras BOOLEAN DEFAULT FALSE,
+    child_roles BOOLEAN DEFAULT FALSE,
+    elderly_roles BOOLEAN DEFAULT FALSE,
+    romantic_roles BOOLEAN DEFAULT FALSE,
+    villain_roles BOOLEAN DEFAULT FALSE,
+    comedy_roles BOOLEAN DEFAULT FALSE,
+    period_roles BOOLEAN DEFAULT FALSE,
+    fantasy_sci_fi_roles BOOLEAN DEFAULT FALSE,
+    special_category BOOLEAN DEFAULT FALSE,
+    plus_size_model BOOLEAN DEFAULT FALSE,
+    petite_model BOOLEAN DEFAULT FALSE,
+    lgbtq_friendly BOOLEAN DEFAULT FALSE,
+    theatre BOOLEAN DEFAULT FALSE,
+    print_modeling BOOLEAN DEFAULT FALSE,
+    reality_shows BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+## 6. user_professional_details
+CREATE TABLE user_professional_details (
+    user_id INT PRIMARY KEY,
+    imdb_profile VARCHAR(255),
+    acting_experience TEXT,
+    professional_training TEXT,
+    instagram_link VARCHAR(255),
+    influencer_type ENUM('micro','macro','nano','ugc') DEFAULT NULL,
+    influencer_niche VARCHAR(255),
+    agency_name VARCHAR(255),
+    manager_name VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+## 7. user_modeling_preferences
+CREATE TABLE user_modeling_preferences (
+    user_id INT PRIMARY KEY,
+    hand_modeling BOOLEAN DEFAULT FALSE,
+    foot_modeling BOOLEAN DEFAULT FALSE,
+    body_double BOOLEAN DEFAULT FALSE,
+    body_double_actor_name VARCHAR(255),
+    lookalike_actor_name VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+## 8. user_skills
+CREATE TABLE user_skills (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    skill_name VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+## 9. user_availabilities
+CREATE TABLE user_availabilities (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    availability_type VARCHAR(255),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+"""
+
+---------------------------------------------------------------------------------------------------------------------------
+===================================================================================================================
+
+
+CREATE TABLE users_full_profile (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    -- Authentication Info
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    mobile VARCHAR(20) NOT NULL UNIQUE,
+    plan ENUM('free', 'premium') DEFAULT 'free',
+    suspended BOOLEAN DEFAULT FALSE,
+    suspended_from DATETIME NULL,
+    suspended_to DATETIME NULL,
+    blocked BOOLEAN DEFAULT FALSE,
+    
+    -- Personal Information
+    name VARCHAR(255) NOT NULL,
+    middle_name VARCHAR(255),
+    last_name VARCHAR(255),
+    date_of_birth DATE,
+    gender ENUM('Male', 'Female', 'Other', 'Prefer not to say'),
+    current_location VARCHAR(255),
+    country VARCHAR(100),
+    state VARCHAR(100),
+    city VARCHAR(100),
+    village VARCHAR(100),
+    passport VARCHAR(50),
+    driver_license VARCHAR(50),
+    cinta_card VARCHAR(50),
+    height_in_inches DECIMAL(5,2),
+    weight_kg DECIMAL(5,2),
+    shoe_size VARCHAR(10),
+    nationality VARCHAR(100),
+    language VARCHAR(255),
+    hobbies TEXT,
+    sports TEXT,
+
+    -- Physical Attributes
+    body_type VARCHAR(100),
+    skin_tone VARCHAR(100),
+    moustache BOOLEAN,
+    hair_length VARCHAR(100),
+    hair_color VARCHAR(100),
+    beard BOOLEAN,
+    tattoo_piercing BOOLEAN,
+    measurement VARCHAR(255),
+    eye_color VARCHAR(100),
+    distinctive_features TEXT,
+    disabilities TEXT,
+    cup_size VARCHAR(50),
+    above_bust VARCHAR(50),
+    bust VARCHAR(50),
+    under_bust VARCHAR(50),
+    waist VARCHAR(50),
+    lower_waist VARCHAR(50),
+    hips VARCHAR(50),
+    arm_hole VARCHAR(50),
+    biceps VARCHAR(50),
+    shoulder VARCHAR(50),
+    sleeve_length VARCHAR(50),
+    trouser_length VARCHAR(50),
+    inseam_length VARCHAR(50),
+    upper_thigh VARCHAR(50),
+    till_elbow VARCHAR(50),
+    lower_thigh VARCHAR(50),
+    collar VARCHAR(50),
+    fork VARCHAR(50),
+
+    -- Transportation
+    two_wheeler BOOLEAN DEFAULT FALSE,
+    four_wheeler BOOLEAN DEFAULT FALSE,
+
+    -- Roles & Representation
+    lead_roles BOOLEAN DEFAULT FALSE,
+    supporting_roles BOOLEAN DEFAULT FALSE,
+    background_extras BOOLEAN DEFAULT FALSE,
+    child_roles BOOLEAN DEFAULT FALSE,
+    elderly_roles BOOLEAN DEFAULT FALSE,
+    romantic_roles BOOLEAN DEFAULT FALSE,
+    villain_roles BOOLEAN DEFAULT FALSE,
+    comedy_roles BOOLEAN DEFAULT FALSE,
+    period_roles BOOLEAN DEFAULT FALSE,
+    fantasy_sci_fi_roles BOOLEAN DEFAULT FALSE,
+    special_category BOOLEAN DEFAULT FALSE,
+    plus_size_model BOOLEAN DEFAULT FALSE,
+    petite_model BOOLEAN DEFAULT FALSE,
+    lgbtq_friendly BOOLEAN DEFAULT FALSE,
+    theatre BOOLEAN DEFAULT FALSE,
+    print_modeling BOOLEAN DEFAULT FALSE,
+    reality_shows BOOLEAN DEFAULT FALSE,
+
+    -- Professional Details
+    imdb_profile VARCHAR(255),
+    acting_experience TEXT,
+    professional_training TEXT,
+    instagram_link VARCHAR(255),
+    influencer_type ENUM('micro','macro','nano','ugc'),
+    influencer_niche VARCHAR(255),
+    agency_name VARCHAR(255),
+    manager_name VARCHAR(255),
+
+    -- Modeling Preferences
+    hand_modeling BOOLEAN DEFAULT FALSE,
+    foot_modeling BOOLEAN DEFAULT FALSE,
+    body_double BOOLEAN DEFAULT FALSE,
+    body_double_actor_name VARCHAR(255),
+    lookalike_actor_name VARCHAR(255),
+
+    -- Skills & Availabilities
+    skills TEXT,            -- e.g., comma-separated: "Dance, Singing, Acting"
+    availabilities TEXT,    -- e.g., "Lead Roles, Comedy, Supporting Roles"
+
+    -- Meta Info
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
