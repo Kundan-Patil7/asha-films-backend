@@ -9,6 +9,7 @@ const {
   updateProject,
   deleteProject,
   getProjectById,
+  getProjectsByType,
 } = require("../controllers/admin/contentController");
 const bannerUpload = require("../middleware/banners");
 const posterUpload = require("../middleware/poster");
@@ -28,4 +29,6 @@ router.get("/projects", getProjects);
 router.put("/projects/:id", posterUpload, updateProject);
 router.delete("/projects/:id", deleteProject);
 router.get("/projects/:id", getProjectById);
+router.get("/projects/type/:type", getProjectsByType);
+
 module.exports = router;

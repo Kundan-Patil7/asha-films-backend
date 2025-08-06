@@ -253,6 +253,7 @@ function buildFileUrl(req, filename, folder = "posters") {
   return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
 }
 
+
 // Initialize projects table
 async function initProjectsTable() {
   await db.query(`
@@ -266,6 +267,7 @@ async function initProjectsTable() {
       language VARCHAR(100),
       platform VARCHAR(100),
       about_project TEXT,
+      type ENUM('Movies','Web Series','Advertisement') DEFAULT 'Movies',
       poster_path VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -287,6 +289,7 @@ const createProject = async (req, res) => {
       language,
       platform,
       about_project,
+      type, // new field
     } = req.body;
 
     if (!film_title) {
@@ -300,8 +303,8 @@ const createProject = async (req, res) => {
 
     await db.query(
       `INSERT INTO projects 
-      (film_title, genre, directed_by, produced_by, released_year, language, platform, about_project, poster_path)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (film_title, genre, directed_by, produced_by, released_year, language, platform, about_project, type, poster_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         film_title,
         genre,
@@ -311,6 +314,7 @@ const createProject = async (req, res) => {
         language,
         platform,
         about_project,
+        type || "Movies", // default to Movies
         posterFilename,
       ]
     );
@@ -329,12 +333,23 @@ const createProject = async (req, res) => {
   }
 };
 
-// 📌 Get all projects
+// 📌 Get all projects (with optional filter by type)
 const getProjects = async (req, res) => {
   try {
     await initProjectsTable();
 
-    const [projects] = await db.query("SELECT * FROM projects ORDER BY created_at DESC");
+    const { type } = req.query;
+    let query = "SELECT * FROM projects";
+    const params = [];
+
+    if (type && ["Movies", "Web Series", "Advertisement"].includes(type)) {
+      query += " WHERE type = ?";
+      params.push(type);
+    }
+
+    query += " ORDER BY created_at DESC";
+
+    const [projects] = await db.query(query, params);
 
     const projectsWithUrls = projects.map((project) => ({
       ...project,
@@ -353,6 +368,45 @@ const getProjects = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch projects",
+      error: err.message,
+    });
+  }
+};
+
+// 📌 Get project by ID
+const getProjectById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await initProjectsTable();
+
+    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [id]);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found",
+      });
+    }
+
+    // Add poster URL if available
+    const projectWithUrl = {
+      ...project,
+      poster_url: project.poster_path
+        ? buildFileUrl(req, project.poster_path)
+        : null,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Project fetched successfully",
+      project: projectWithUrl,
+    });
+  } catch (err) {
+    console.error("Error fetching project:", err);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch project",
       error: err.message,
     });
   }
@@ -391,11 +445,12 @@ const updateProject = async (req, res) => {
       language,
       platform,
       about_project,
+      type,
     } = req.body;
 
     await db.query(
       `UPDATE projects SET film_title=?, genre=?, directed_by=?, produced_by=?, 
-        released_year=?, language=?, platform=?, about_project=?, poster_path=? 
+        released_year=?, language=?, platform=?, about_project=?, type=?, poster_path=? 
         WHERE id=?`,
       [
         film_title || project.film_title,
@@ -406,6 +461,7 @@ const updateProject = async (req, res) => {
         language || project.language,
         platform || project.platform,
         about_project || project.about_project,
+        type || project.type,
         posterFilename,
         id,
       ]
@@ -460,43 +516,55 @@ const deleteProject = async (req, res) => {
     });
   }
 };
-const getProjectById = async (req, res) => {
-  const { id } = req.params;
+
+
+// 📌 Get projects by type (Movies, Web Series, Advertisement)
+const getProjectsByType = async (req, res) => {
+  const { type } = req.params;
 
   try {
     await initProjectsTable();
 
-    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [id]);
-
-    if (!project) {
-      return res.status(404).json({
+    // Validate type
+    const validTypes = ["Movies", "Web Series", "Advertisement"];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
         success: false,
-        message: "Project not found",
+        message: "Invalid project type",
       });
     }
 
-    // Add poster URL if available
-    const projectWithUrl = {
+    const [projects] = await db.query("SELECT * FROM projects WHERE type = ?", [type]);
+
+    if (!projects.length) {
+      return res.status(404).json({
+        success: false,
+        message: `No projects found for type: ${type}`,
+      });
+    }
+
+    const projectsWithUrls = projects.map((project) => ({
       ...project,
       poster_url: project.poster_path
         ? buildFileUrl(req, project.poster_path)
         : null,
-    };
+    }));
 
     res.status(200).json({
       success: true,
-      message: "Project fetched successfully",
-      project: projectWithUrl,
+      message: `${type} projects fetched successfully`,
+      projects: projectsWithUrls,
     });
   } catch (err) {
-    console.error("Error fetching project:", err);
+    console.error("Error fetching projects by type:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch project",
+      message: "Failed to fetch projects by type",
       error: err.message,
     });
   }
 };
+
 
 module.exports = {
   getBanners,
@@ -508,4 +576,5 @@ module.exports = {
   updateProject,
   deleteProject,
   getProjectById,
+  getProjectsByType,
 };
