@@ -13,21 +13,27 @@ const {
   createClient,
   getClients,
   deleteClient,
+  addFeaturedArtist,
+  getAllFeaturedArtists,
+  deleteFeaturedArtist,
 } = require("../controllers/admin/contentController");
+
 const bannerUpload = require("../middleware/banners");
 const posterUpload = require("../middleware/poster");
 const clientUpload = require("../middleware/client");
+const artistUpload = require("../middleware/artist");
+
 const router = express.Router();
 
-// Banner Routes
+// ✅ Banner Routes
 router.get("/banners", getBanners);
 router.put("/banners/:id", bannerUpload, updateBanner);
 
-// About Us Routes
+// ✅ About Us Routes
 router.get("/about", getAboutUs);
 router.put("/about", updateAboutUs);
 
-//  projects
+// ✅ Project Routes
 router.post("/projects", posterUpload, createProject);
 router.get("/projects", getProjects);
 router.put("/projects/:id", posterUpload, updateProject);
@@ -35,8 +41,14 @@ router.delete("/projects/:id", deleteProject);
 router.get("/projects/:id", getProjectById);
 router.get("/projects/type/:type", getProjectsByType);
 
-//clients
+// ✅ Client Routes
 router.post("/clients", clientUpload, createClient);
 router.get("/clients", getClients);
 router.delete("/clients/:id", deleteClient);
+
+// ✅ Featured Artists Routes
+router.post("/artists", artistUpload.single("Image"), addFeaturedArtist);
+router.get("/artists", getAllFeaturedArtists);
+router.delete("/artists/:id", deleteFeaturedArtist);
+
 module.exports = router;

@@ -15,6 +15,7 @@ const unlinkAsync = util.promisify(fs.unlink);
 const BANNER_DIR = path.join(process.cwd(), "uploads", "banners");
 const POSTER_DIR = path.join(process.cwd(), "uploads", "posters");
 const CLIENT_DIR = path.join(process.cwd(), "uploads", "clients");
+const ARTIST_DIR = path.join(process.cwd(), "uploads", "artists");
 
 // Helper function to remove file if exists
 async function removeFileIfExists(filePath) {
@@ -240,8 +241,6 @@ const updateAboutUs = async (req, res) => {
   }
 };
 
-
-
 // Remove file helper
 async function removeFileIfExists(filePath) {
   if (await existsAsync(filePath)) {
@@ -253,7 +252,6 @@ async function removeFileIfExists(filePath) {
 function buildFileUrl(req, filename, folder = "posters") {
   return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
 }
-
 
 // Initialize projects table
 async function initProjectsTable() {
@@ -381,7 +379,9 @@ const getProjectById = async (req, res) => {
   try {
     await initProjectsTable();
 
-    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [id]);
+    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [
+      id,
+    ]);
 
     if (!project) {
       return res.status(404).json({
@@ -420,7 +420,9 @@ const updateProject = async (req, res) => {
   try {
     await initProjectsTable();
 
-    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [id]);
+    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [
+      id,
+    ]);
 
     if (!project) {
       return res.status(404).json({
@@ -487,7 +489,9 @@ const deleteProject = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [id]);
+    const [[project]] = await db.query("SELECT * FROM projects WHERE id = ?", [
+      id,
+    ]);
 
     if (!project) {
       return res.status(404).json({
@@ -518,7 +522,6 @@ const deleteProject = async (req, res) => {
   }
 };
 
-
 // 📌 Get projects by type (Movies, Web Series, Advertisement)
 const getProjectsByType = async (req, res) => {
   const { type } = req.params;
@@ -535,7 +538,9 @@ const getProjectsByType = async (req, res) => {
       });
     }
 
-    const [projects] = await db.query("SELECT * FROM projects WHERE type = ?", [type]);
+    const [projects] = await db.query("SELECT * FROM projects WHERE type = ?", [
+      type,
+    ]);
 
     if (!projects.length) {
       return res.status(404).json({
@@ -565,7 +570,6 @@ const getProjectsByType = async (req, res) => {
     });
   }
 };
-
 
 function buildFileUrl(req, filename, folder = "clients") {
   return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
@@ -618,7 +622,9 @@ const getClients = async (req, res) => {
   try {
     await initClientsTable();
 
-    const [clients] = await db.query("SELECT * FROM clients ORDER BY created_at DESC");
+    const [clients] = await db.query(
+      "SELECT * FROM clients ORDER BY created_at DESC"
+    );
 
     if (!clients.length) {
       return res.status(404).json({
@@ -654,7 +660,9 @@ const deleteClient = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const [[client]] = await db.query("SELECT * FROM clients WHERE id = ?", [id]);
+    const [[client]] = await db.query("SELECT * FROM clients WHERE id = ?", [
+      id,
+    ]);
 
     if (!client) {
       return res.status(404).json({
@@ -685,7 +693,95 @@ const deleteClient = async (req, res) => {
   }
 };
 
+const addFeaturedArtist = async (req, res) => {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS featured_artists (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        image VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Image is required" });
+    }
+
+    const imagePath = req.file.filename;
+
+    const [result] = await db.query(
+      "INSERT INTO featured_artists (image) VALUES (?)",
+      [imagePath]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Featured artist added successfully",
+      data: { id: result.insertId, image: imagePath },
+    });
+  } catch (error) {
+    console.error("Error adding featured artist:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const getAllFeaturedArtists = async (req, res) => {
+  try {
+    const [rows] = await db.query("SELECT * FROM featured_artists");
+
+    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/artists/`;
+
+    const artists = rows.map((artist) => ({
+      id: artist.id,
+      image: baseUrl + artist.image,
+      created_at: artist.created_at,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: artists,
+    });
+  } catch (error) {
+    console.error("Error fetching featured artists:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+const deleteFeaturedArtist = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [rows] = await db.query(
+      "SELECT image FROM featured_artists WHERE id = ?",
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Artist not found" });
+    }
+
+    const imagePath = path.join(ARTIST_DIR, rows[0].image);
+
+    // Delete image from folder
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+
+    // Delete record from DB
+    await db.query("DELETE FROM featured_artists WHERE id = ?", [id]);
+
+    res
+      .status(200)
+      .json({ success: true, message: "Featured artist deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting artist:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 
 module.exports = {
   getBanners,
@@ -701,4 +797,7 @@ module.exports = {
   createClient,
   getClients,
   deleteClient,
+  addFeaturedArtist,
+  getAllFeaturedArtists,
+  deleteFeaturedArtist,
 };
