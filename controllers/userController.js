@@ -16,10 +16,11 @@ const registerUser = async (req, res) => {
     const { pan_no, aadhaar_no, name, email, mobile, password } = req.body;
 
     if (!pan_no || !aadhaar_no || !name || !email || !mobile || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields are required" });
     }
 
-    // Create users table if not exists
     const createUserTable = `
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -125,19 +126,18 @@ const registerUser = async (req, res) => {
     `;
     await db.query(createUserTable);
 
-    // Check if user already exists
     const [existingUsers] = await db.query(
       `SELECT * FROM users WHERE email = ? OR mobile = ?`,
       [email, mobile]
     );
 
     if (existingUsers.length > 0) {
-      return res
-        .status(409)
-        .json({ message: "User with this email or mobile already exists" });
+      return res.status(409).json({
+        success: false,
+        message: "User with this email or mobile already exists",
+      });
     }
 
-    // Register new user
     const hashedPassword = await bcrypt.hash(password, 11);
     const otp = generateOTP();
 
@@ -148,12 +148,13 @@ const registerUser = async (req, res) => {
     );
 
     res.status(201).json({
+      success: true,
       message: "User registered successfully. Please verify OTP.",
       otp, // remove in production
     });
   } catch (error) {
     console.error("❌ registerUser error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -161,13 +162,18 @@ const registerUser = async (req, res) => {
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ message: "Email is required" });
+    if (!email)
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required" });
 
     const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [
       email,
     ]);
     if (rows.length === 0)
-      return res.status(404).json({ message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
     const otp = generateOTP();
     await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [
@@ -176,50 +182,58 @@ const forgotPassword = async (req, res) => {
     ]);
 
     res.status(200).json({
+      success: true,
       message: "OTP sent to your email (for demo returning in response)",
       otp, // remove in production
     });
   } catch (error) {
     console.error("❌ forgotPassword error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-
-
-
 // ===================== LOGIN =====================
+
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password)
-      return res.status(400).json({ message: "Email and password required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email and password required" });
 
     const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [
       email,
     ]);
     if (rows.length === 0)
-      return res.status(404).json({ message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
     const user = rows[0];
     if (!user.is_verified) {
       return res
         .status(403)
-        .json({ message: "Please verify your account first" });
+        .json({ success: false, message: "Please verify your account first" });
     }
     if (user.suspended || user.blocked) {
-      return res.status(403).json({ message: "Account suspended or blocked" });
+      return res
+        .status(403)
+        .json({ success: false, message: "Account suspended or blocked" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid credentials" });
 
     const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
       expiresIn: "8h",
     });
 
     res.status(200).json({
+      success: true,
       message: "Login successful",
       token,
       user: {
@@ -231,7 +245,7 @@ const loginUser = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ loginUser error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -240,37 +254,45 @@ const verifyOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp)
-      return res.status(400).json({ message: "Email and OTP are required" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Email and OTP are required" });
 
     const [rows] = await db.query(
       `SELECT otp_code FROM users WHERE email = ?`,
       [email]
     );
     if (rows.length === 0)
-      return res.status(404).json({ message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
     if (rows[0].otp_code !== otp)
-      return res.status(400).json({ message: "Invalid OTP" });
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
 
     await db.query(
       `UPDATE users SET is_verified = 1, otp_code = NULL WHERE email = ?`,
       [email]
     );
 
-    res.status(200).json({ message: "User verified successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "User verified successfully" });
   } catch (error) {
     console.error("❌ verifyOTP error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 // ===================== RESET PASSWORD =====================
 const resetPassword = async (req, res) => {
   try {
     const { email, newPassword } = req.body;
     if (!email || !newPassword)
-      return res.status(400).json({ message: "Email and new password are required" });
+      return res.status(400).json({
+        success: false,
+        message: "Email and new password are required",
+      });
 
     const hashedPassword = await bcrypt.hash(newPassword, 11);
 
@@ -280,14 +302,19 @@ const resetPassword = async (req, res) => {
     );
 
     if (result.affectedRows === 0)
-      return res.status(404).json({ message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
 
-    res.status(200).json({ message: "Password reset successful" });
+    res
+      .status(200)
+      .json({ success: true, message: "Password reset successful" });
   } catch (error) {
     console.error("❌ resetPassword error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 // ===================== GET PROFILE =====================
 const getProfile = async (req, res) => {
   try {
@@ -295,7 +322,9 @@ const getProfile = async (req, res) => {
 
     const [rows] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
     if (rows.length === 0)
-      return res.status(404).json({ message: "Profile not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Profile not found" });
 
     const user = rows[0];
     delete user.password;
@@ -307,10 +336,10 @@ const getProfile = async (req, res) => {
       }`;
     }
 
-    res.status(200).json({ message: "Profile fetched", user });
+    res.status(200).json({ success: true, message: "Profile fetched", user });
   } catch (error) {
     console.error("❌ getProfile error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -340,7 +369,9 @@ const updateProfile = async (req, res) => {
         [userId]
       );
       if (rows.length === 0) {
-        return res.status(404).json({ message: "User not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
       }
 
       const oldImage = rows[0].profile_image;
@@ -362,7 +393,9 @@ const updateProfile = async (req, res) => {
     }
 
     if (!updates || Object.keys(updates).length === 0) {
-      return res.status(400).json({ message: "No fields to update" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No fields to update" });
     }
 
     // Build SQL dynamically
@@ -383,12 +416,14 @@ const updateProfile = async (req, res) => {
     delete updatedUser[0].password;
     delete updatedUser[0].otp_code;
 
-    res
-      .status(200)
-      .json({ message: "Profile updated successfully", user: updatedUser[0] });
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser[0],
+    });
   } catch (error) {
     console.error("❌ updateProfile error:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
