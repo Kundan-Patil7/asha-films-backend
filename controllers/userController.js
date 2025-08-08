@@ -235,7 +235,7 @@ const loginUser = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-// VERIFY OTP (No change, as it was already robust)
+
 const verifyOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -271,7 +271,7 @@ const verifyOTP = async (req, res) => {
   }
 };
 
-// ✅ Get Profile
+
 const getProfile = async (req, res) => {
   try {
     const userId = req.user.id; // Provided by authentication middleware
