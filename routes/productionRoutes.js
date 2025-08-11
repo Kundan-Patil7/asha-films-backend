@@ -1,0 +1,47 @@
+// routes/productionHouseRoutes.js
+const express = require("express");
+const router = express.Router();
+
+const {
+  registerProductionHouse,
+  loginProductionHouse,
+  verifyProductionHouseOTP,
+  forgotProductionHousePassword,
+  resetProductionHousePassword,
+  getProductionHouseProfile,
+  updateProductionHouseProfile,
+} = require("../controllers/productionController");
+const productionProfileImage = require("../middleware/productionProfileImg");
+const productionAuth = require("../middleware/productionAuth");
+
+
+
+// Register production house
+router.post("/register", registerProductionHouse);
+
+// Login production house
+router.post("/login", loginProductionHouse);
+
+// Verify OTP
+router.post("/verify", verifyProductionHouseOTP);
+
+// Forgot password - send OTP
+router.post("/forgot-password", forgotProductionHousePassword);
+
+// Reset password
+router.post("/reset-password", resetProductionHousePassword);
+
+// Get profile - protected route
+router.get("/profile", productionAuth, getProductionHouseProfile);
+
+
+
+// Update profile - protected route + upload image
+router.put(
+  "/profile",
+  productionAuth,
+  productionProfileImage.single("image"),
+  updateProductionHouseProfile
+);
+
+module.exports = router;

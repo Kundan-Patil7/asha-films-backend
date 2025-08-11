@@ -8,12 +8,14 @@ const db = require("./config/database");
 const contentRoutes = require("./routes/contentRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRouter");
-
+const productionRoutes = require("./routes/productionRoutes");
 const app = express();
 
 // Middleware
 app.use(express.json());
 app.use(cors({ origin: process.env.CLIENT_URL || "*" }));
+app.use(express.urlencoded({ extended: true }));
+
 // app.use(helmet()); // Security headers
 // app.use(morgan('combined')); // Logging
 
@@ -36,6 +38,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use("/api", adminRoutes);
 app.use("/api/content", contentRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/production", productionRoutes);
 
 // 404 Handler
 app.use((req, res) => {
