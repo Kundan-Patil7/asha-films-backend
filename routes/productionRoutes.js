@@ -10,9 +10,15 @@ const {
   resetProductionHousePassword,
   getProductionHouseProfile,
   updateProductionHouseProfile,
+  addJob,
+  editJob,
+  deleteJob,
+  getAllJobs,
+  getJobById,
 } = require("../controllers/productionController");
 const productionProfileImage = require("../middleware/productionProfileImg");
 const productionAuth = require("../middleware/productionAuth");
+const jobCoverImageUpload = require("../middleware/job");
 
 
 
@@ -43,5 +49,32 @@ router.put(
   productionProfileImage.single("image"),
   updateProductionHouseProfile
 );
+
+
+
+
+// job 
+
+router.post(
+  "/jobs",
+  productionAuth, 
+  jobCoverImageUpload.single("cover_photo"),
+  addJob
+);
+
+router.put(
+  "/jobs/:id",
+  productionAuth, 
+  jobCoverImageUpload.single("cover_photo"),
+  editJob
+);
+// Delete Job
+router.delete("/jobs/:id",productionAuth, deleteJob);
+
+
+router.get("/jobs", getAllJobs);
+
+
+router.get("/jobs/:id", getJobById);
 
 module.exports = router;

@@ -1,0 +1,36 @@
+
+CREATE TABLE projects (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    project_type VARCHAR(100) NOT NULL, -- e.g. movie, ad, short film
+    project_description TEXT NOT NULL,
+    language_required VARCHAR(100) NOT NULL,
+    role_details TEXT,
+    role_type ENUM('Primary', 'Secondary', 'Tertiary') NOT NULL,
+    
+    gender ENUM('Male', 'Female', 'Other') NOT NULL,
+    age_range VARCHAR(50) NOT NULL, -- e.g. "18-25"
+    height VARCHAR(50),
+    body_type VARCHAR(100),
+    skills_needed TEXT, -- comma-separated or detailed list
+    role_description TEXT,
+    phone_number VARCHAR(20) NOT NULL,
+    email VARCHAR(150) NOT NULL, -- Added email column
+    
+    city_location VARCHAR(150) NOT NULL, -- City or Shooting location
+    audition_type ENUM('Self Tape', 'Online', 'Offline') NOT NULL,
+    audition_dates VARCHAR(100), -- Could be date range
+    shoot_dates VARCHAR(100),
+    shoot_duration VARCHAR(50),
+    application_deadline DATE,
+    availability_required ENUM('Full-time', 'Part-time', 'Flexible'),
+    compensation VARCHAR(50),
+    
+    cover_photo VARCHAR(255), -- File name for uploaded cover photo
+    
+
+    production_house_id INT, 
+    production_house_name VARCHAR(255),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
