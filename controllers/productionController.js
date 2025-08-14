@@ -418,6 +418,7 @@ const updateProductionHouseProfile = async (req, res) => {
   }
 };
 
+
 // ===================== JOB MANAGEMENT =====================
 const initJobTable = async () => {
   await db.query(`
@@ -444,7 +445,7 @@ const initJobTable = async () => {
       application_deadline DATE,
       availability_required ENUM('Full-time', 'Part-time', 'Flexible'),
       compensation VARCHAR(50),
-      cover_photo VARCHAR(255),
+      image VARCHAR(255),
       production_house_id INT,
       production_house_name VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -478,7 +479,7 @@ const addJob = async (req, res) => {
       ...req.body,
       production_house_id: req.user.id,
       production_house_name: req.user.company_name,
-      cover_photo: req.file?.filename || null,
+      image: req.file?.filename || null,
     };
 
     await db.query(`INSERT INTO job SET ?`, [jobData]);
@@ -504,7 +505,7 @@ const editJob = async (req, res) => {
 
     // Verify job exists and belongs to this production house
     const [existingJob] = await db.query(
-      `SELECT cover_photo, production_house_id FROM job WHERE id = ?`,
+      `SELECT image, production_house_id FROM job WHERE id = ?`,
       [id]
     );
 
@@ -522,38 +523,26 @@ const editJob = async (req, res) => {
       });
     }
 
-    // Handle cover photo updates
-    let coverPhoto = existingJob[0].cover_photo;
+    // Handle image updates
+    let image = existingJob[0].image;
 
     if (req.file) {
-      // Delete old cover photo if exists
-      if (coverPhoto) {
-        const oldPath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "jobCovers",
-          coverPhoto
-        );
+      // Delete old image if exists
+      if (image) {
+        const oldPath = path.join(__dirname, "..", "uploads", "jobs", image);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-      coverPhoto = req.file.filename;
+      image = req.file.filename;
     } else if (req.body.remove_image === "true") {
-      // Remove cover photo if requested
-      if (coverPhoto) {
-        const oldPath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "jobCovers",
-          coverPhoto
-        );
+      // Remove image if requested
+      if (image) {
+        const oldPath = path.join(__dirname, "..", "uploads", "jobs", image);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
-      coverPhoto = null;
+      image = null;
     }
 
-    updates.cover_photo = coverPhoto;
+    updates.image = image;
 
     // Remove restricted fields
     const restricted = [
@@ -584,11 +573,10 @@ const editJob = async (req, res) => {
 const deleteJob = async (req, res) => {
   try {
     const { id } = req.params;
-   
 
     // Verify job exists and belongs to this production house
     const [existingJob] = await db.query(
-      `SELECT cover_photo, production_house_id FROM job WHERE id = ?`,
+      `SELECT image, production_house_id FROM job WHERE id = ?`,
       [id]
     );
 
@@ -606,14 +594,14 @@ const deleteJob = async (req, res) => {
       });
     }
 
-    // Delete cover photo if exists
-    if (existingJob[0].cover_photo) {
+    // Delete image if exists
+    if (existingJob[0].image) {
       const filePath = path.join(
         __dirname,
         "..",
         "uploads",
-        "jobCovers",
-        existingJob[0].cover_photo
+        "jobs",
+        existingJob[0].image
       );
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     }
@@ -641,7 +629,7 @@ const getAllJobs = async (req, res) => {
         j.*,
         CONCAT('${req.protocol}://${req.get(
       "host"
-    )}/uploads/jobCovers/', j.cover_photo) AS cover_photo_url
+    )}/uploads/jobs/', j.image) AS image_url
       FROM job j
       ORDER BY j.created_at DESC
     `);
@@ -649,10 +637,8 @@ const getAllJobs = async (req, res) => {
     // Format the results
     const formattedJobs = jobs.map((job) => ({
       ...job,
-      cover_photo: job.cover_photo
-        ? `${req.protocol}://${req.get("host")}/uploads/jobCovers/${
-            job.cover_photo
-          }`
+      image: job.image
+        ? `${req.protocol}://${req.get("host")}/uploads/jobs/${job.image}`
         : null,
     }));
 
@@ -670,42 +656,41 @@ const getAllJobs = async (req, res) => {
     });
   }
 };
-
 const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
+
     const [jobs] = await db.query(
       `
       SELECT 
         j.*,
         CONCAT('${req.protocol}://${req.get(
         "host"
-      )}/uploads/jobCovers/', j.cover_photo) AS cover_photo_url
+      )}/uploads/jobs/', j.image) AS image_url
       FROM job j
       WHERE j.id = ?
-    `,
+      `,
       [id]
     );
 
-    if (jobs.length === 0) {
+    if (!jobs.length) {
       return res.status(404).json({
         success: false,
         message: "Job not found",
       });
     }
 
-    const job = {
-      ...jobs[0],
-      cover_photo: jobs[0].cover_photo
-        ? `${req.protocol}://${req.get("host")}/uploads/jobCovers/${
-            jobs[0].cover_photo
-          }`
-        : null,
+    const job = jobs[0];
+    const responseData = {
+      ...job,
+      // Ensure consistent field names in response
+      image: job.image_url || null,
+      image_url: undefined, // Remove duplicate field
     };
 
     res.status(200).json({
       success: true,
-      job,
+      job: responseData,
     });
   } catch (error) {
     console.error("❌ getJobById error:", error);
@@ -716,7 +701,6 @@ const getJobById = async (req, res) => {
     });
   }
 };
-
 module.exports = {
   registerProductionHouse,
   loginProductionHouse,
