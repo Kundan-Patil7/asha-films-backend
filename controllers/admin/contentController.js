@@ -1,5 +1,5 @@
 /**
- * Optimized Banners and About Us Content Management
+ * Optimized Content Management Controller
  */
 
 const db = require("../../config/database");
@@ -34,7 +34,7 @@ async function initBannersTable() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS banners (
       id INT PRIMARY KEY AUTO_INCREMENT,
-      image_path VARCHAR(255),
+      image VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
@@ -56,7 +56,7 @@ async function initBannersTable() {
 const getBanners = async (req, res) => {
   try {
     const [banners] = await db.query(`
-      SELECT id, image_path, updated_at AS updatedAt 
+      SELECT id, image, updated_at AS updatedAt 
       FROM banners 
       ORDER BY id ASC
     `);
@@ -70,8 +70,8 @@ const getBanners = async (req, res) => {
 
     const bannersWithUrls = banners.map((banner) => ({
       id: banner.id,
-      filename: banner.image_path,
-      url: buildFileUrl(req, banner.image_path),
+      filename: banner.image,
+      url: buildFileUrl(req, banner.image),
       updatedAt: banner.updatedAt,
     }));
 
@@ -108,7 +108,7 @@ const updateBanner = async (req, res) => {
 
     // Get current banner
     const [[banner]] = await db.query(
-      "SELECT image_path FROM banners WHERE id = ?",
+      "SELECT image FROM banners WHERE id = ?",
       [bannerId]
     );
 
@@ -120,8 +120,8 @@ const updateBanner = async (req, res) => {
     }
 
     // Remove old image if exists
-    if (banner.image_path) {
-      const oldPath = path.join(BANNER_DIR, banner.image_path);
+    if (banner.image) {
+      const oldPath = path.join(BANNER_DIR, banner.image);
       if (oldPath !== tempFilePath) {
         await removeFileIfExists(oldPath);
       }
@@ -129,7 +129,7 @@ const updateBanner = async (req, res) => {
 
     // Update with new image
     const newFilename = req.file.filename;
-    await db.query("UPDATE banners SET image_path = ? WHERE id = ?", [
+    await db.query("UPDATE banners SET image = ? WHERE id = ?", [
       newFilename,
       bannerId,
     ]);
@@ -241,18 +241,6 @@ const updateAboutUs = async (req, res) => {
   }
 };
 
-// Remove file helper
-async function removeFileIfExists(filePath) {
-  if (await existsAsync(filePath)) {
-    await unlinkAsync(filePath);
-  }
-}
-
-// Build URL helper
-function buildFileUrl(req, filename, folder = "posters") {
-  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
-}
-
 // Initialize projects table
 async function initProjectsTable() {
   await db.query(`
@@ -267,14 +255,14 @@ async function initProjectsTable() {
       platform VARCHAR(100),
       about_project TEXT,
       type ENUM('Movies','Web Series','Advertisement') DEFAULT 'Movies',
-      poster_path VARCHAR(255),
+      image VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 }
 
-// 📌 Create new project
+// Create new project
 const createProject = async (req, res) => {
   try {
     await initProjectsTable();
@@ -288,7 +276,7 @@ const createProject = async (req, res) => {
       language,
       platform,
       about_project,
-      type, // new field
+      type,
     } = req.body;
 
     if (!film_title) {
@@ -298,11 +286,11 @@ const createProject = async (req, res) => {
       });
     }
 
-    const posterFilename = req.file ? req.file.filename : null;
+    const imageFilename = req.file ? req.file.filename : null;
 
     await db.query(
       `INSERT INTO projects 
-      (film_title, genre, directed_by, produced_by, released_year, language, platform, about_project, type, poster_path)
+      (film_title, genre, directed_by, produced_by, released_year, language, platform, about_project, type, image)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         film_title,
@@ -313,8 +301,8 @@ const createProject = async (req, res) => {
         language,
         platform,
         about_project,
-        type || "Movies", // default to Movies
-        posterFilename,
+        type || "Movies",
+        imageFilename,
       ]
     );
 
@@ -332,7 +320,7 @@ const createProject = async (req, res) => {
   }
 };
 
-// 📌 Get all projects (with optional filter by type)
+// Get all projects (with optional filter by type)
 const getProjects = async (req, res) => {
   try {
     await initProjectsTable();
@@ -352,8 +340,8 @@ const getProjects = async (req, res) => {
 
     const projectsWithUrls = projects.map((project) => ({
       ...project,
-      poster_url: project.poster_path
-        ? buildFileUrl(req, project.poster_path)
+      image_url: project.image
+        ? buildFileUrl(req, project.image, "posters")
         : null,
     }));
 
@@ -372,7 +360,7 @@ const getProjects = async (req, res) => {
   }
 };
 
-// 📌 Get project by ID
+// Get project by ID
 const getProjectById = async (req, res) => {
   const { id } = req.params;
 
@@ -390,11 +378,11 @@ const getProjectById = async (req, res) => {
       });
     }
 
-    // Add poster URL if available
+    // Add image URL if available
     const projectWithUrl = {
       ...project,
-      poster_url: project.poster_path
-        ? buildFileUrl(req, project.poster_path)
+      image_url: project.image
+        ? buildFileUrl(req, project.image, "posters")
         : null,
     };
 
@@ -413,7 +401,7 @@ const getProjectById = async (req, res) => {
   }
 };
 
-// 📌 Update project
+// Update project
 const updateProject = async (req, res) => {
   const { id } = req.params;
 
@@ -431,11 +419,11 @@ const updateProject = async (req, res) => {
       });
     }
 
-    const posterFilename = req.file ? req.file.filename : project.poster_path;
+    const imageFilename = req.file ? req.file.filename : project.image;
 
-    // Remove old poster if new one uploaded
-    if (req.file && project.poster_path) {
-      const oldPath = path.join(POSTER_DIR, project.poster_path);
+    // Remove old image if new one uploaded
+    if (req.file && project.image) {
+      const oldPath = path.join(POSTER_DIR, project.image);
       await removeFileIfExists(oldPath);
     }
 
@@ -453,7 +441,7 @@ const updateProject = async (req, res) => {
 
     await db.query(
       `UPDATE projects SET film_title=?, genre=?, directed_by=?, produced_by=?, 
-        released_year=?, language=?, platform=?, about_project=?, type=?, poster_path=? 
+        released_year=?, language=?, platform=?, about_project=?, type=?, image=? 
         WHERE id=?`,
       [
         film_title || project.film_title,
@@ -465,7 +453,7 @@ const updateProject = async (req, res) => {
         platform || project.platform,
         about_project || project.about_project,
         type || project.type,
-        posterFilename,
+        imageFilename,
         id,
       ]
     );
@@ -484,7 +472,7 @@ const updateProject = async (req, res) => {
   }
 };
 
-// 📌 Delete project
+// Delete project
 const deleteProject = async (req, res) => {
   const { id } = req.params;
 
@@ -500,9 +488,9 @@ const deleteProject = async (req, res) => {
       });
     }
 
-    // Delete poster if exists
-    if (project.poster_path) {
-      const oldPath = path.join(POSTER_DIR, project.poster_path);
+    // Delete image if exists
+    if (project.image) {
+      const oldPath = path.join(POSTER_DIR, project.image);
       await removeFileIfExists(oldPath);
     }
 
@@ -522,7 +510,7 @@ const deleteProject = async (req, res) => {
   }
 };
 
-// 📌 Get projects by type (Movies, Web Series, Advertisement)
+// Get projects by type (Movies, Web Series, Advertisement)
 const getProjectsByType = async (req, res) => {
   const { type } = req.params;
 
@@ -551,8 +539,8 @@ const getProjectsByType = async (req, res) => {
 
     const projectsWithUrls = projects.map((project) => ({
       ...project,
-      poster_url: project.poster_path
-        ? buildFileUrl(req, project.poster_path)
+      image_url: project.image
+        ? buildFileUrl(req, project.image, "posters")
         : null,
     }));
 
@@ -571,23 +559,19 @@ const getProjectsByType = async (req, res) => {
   }
 };
 
-function buildFileUrl(req, filename, folder = "clients") {
-  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
-}
-
 // Initialize clients table
 async function initClientsTable() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS clients (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      image_path VARCHAR(255),
+      image VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 }
 
-// 📌 Create client (POST)
+// Create client (POST)
 const createClient = async (req, res) => {
   try {
     await initClientsTable();
@@ -601,7 +585,7 @@ const createClient = async (req, res) => {
 
     const filename = req.file.filename;
 
-    await db.query("INSERT INTO clients (image_path) VALUES (?)", [filename]);
+    await db.query("INSERT INTO clients (image) VALUES (?)", [filename]);
 
     res.status(201).json({
       success: true,
@@ -617,7 +601,7 @@ const createClient = async (req, res) => {
   }
 };
 
-// 📌 Get all clients (GET)
+// Get all clients (GET)
 const getClients = async (req, res) => {
   try {
     await initClientsTable();
@@ -635,8 +619,8 @@ const getClients = async (req, res) => {
 
     const clientsWithUrls = clients.map((client) => ({
       ...client,
-      image_url: client.image_path
-        ? buildFileUrl(req, client.image_path)
+      image_url: client.image
+        ? buildFileUrl(req, client.image, "clients")
         : null,
     }));
 
@@ -655,7 +639,7 @@ const getClients = async (req, res) => {
   }
 };
 
-// 📌 Delete client (DELETE)
+// Delete client (DELETE)
 const deleteClient = async (req, res) => {
   const { id } = req.params;
 
@@ -672,8 +656,8 @@ const deleteClient = async (req, res) => {
     }
 
     // Remove image if exists
-    if (client.image_path) {
-      const oldPath = path.join(CLIENT_DIR, client.image_path);
+    if (client.image) {
+      const oldPath = path.join(CLIENT_DIR, client.image);
       await removeFileIfExists(oldPath);
     }
 
@@ -693,6 +677,7 @@ const deleteClient = async (req, res) => {
   }
 };
 
+// Featured Artists
 const addFeaturedArtist = async (req, res) => {
   try {
     await db.query(`

@@ -118,7 +118,8 @@ const registerUser = async (req, res) => {
         body_double_actor_name VARCHAR(255) NULL,
         lookalike_actor_name VARCHAR(255) NULL,
         skills TEXT NULL,
-        profile_image VARCHAR(255) NULL,
+        image VARCHAR(255) NULL,
+        images JSON NULL,
         availabilities TEXT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -142,7 +143,7 @@ const registerUser = async (req, res) => {
     const otp = generateOTP();
 
     await db.query(
-      `INSERT INTO users (pan_no, aadhaar_no, name, email, mobile, password, otp_code)
+      `INSERT INTO users (pan_no, aadhaar_no, name, email, mobile, password, otp_code) 
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [pan_no, aadhaar_no, name, email, mobile, hashedPassword, otp]
     );
@@ -154,6 +155,99 @@ const registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ registerUser error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ===================== UPDATE PROFILE =====================
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updates = { ...req.body };
+
+    const restricted = [
+      "id",
+      "email",
+      "password",
+      "otp_code",
+      "is_verified",
+      "created_at",
+      "updated_at",
+    ];
+    restricted.forEach((f) => delete updates[f]);
+
+    // Handle single image upload
+    if (req.files && req.files.image) {
+      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [
+        userId,
+      ]);
+      if (rows.length === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const oldImage = rows[0].image;
+      if (oldImage) {
+        const oldPath = path.join(
+          __dirname,
+          "..",
+          "uploads",
+          "profiles",
+          oldImage
+        );
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+      }
+
+      updates.image = req.files.image[0].filename;
+    }
+
+    // Handle multiple images upload (append mode)
+    if (req.files && req.files.images) {
+      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [
+        userId,
+      ]);
+
+      let currentImages = [];
+      if (rows[0].images) {
+        currentImages = JSON.parse(rows[0].images);
+      }
+
+      const newImages = req.files.images.map((file) => file.filename);
+      updates.images = JSON.stringify([...currentImages, ...newImages]);
+    }
+
+    if (!updates || Object.keys(updates).length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No fields to update" });
+    }
+
+    const setClause = Object.keys(updates)
+      .map((f) => `${f} = ?`)
+      .join(", ");
+    const values = Object.values(updates);
+
+    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [
+      ...values,
+      userId,
+    ]);
+
+    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [
+      userId,
+    ]);
+    delete updatedUser[0].password;
+    delete updatedUser[0].otp_code;
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser[0],
+    });
+  } catch (error) {
+    console.error("❌ updateProfile error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -321,19 +415,36 @@ const getProfile = async (req, res) => {
     const userId = req.user.id;
 
     const [rows] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
-    if (rows.length === 0)
+    if (rows.length === 0) {
       return res
         .status(404)
         .json({ success: false, message: "Profile not found" });
+    }
 
     const user = rows[0];
     delete user.password;
     delete user.otp_code;
 
-    if (user.profile_image) {
-      user.profile_image = `${req.protocol}://${req.get("host")}${
-        user.profile_image
+    // Single image URL
+    if (user.image) {
+      user.image = `${req.protocol}://${req.get("host")}/uploads/profiles/${
+        user.image
       }`;
+    }
+
+    // Multiple images URLs
+    if (user.images) {
+      try {
+        const parsedImages = JSON.parse(user.images);
+        if (Array.isArray(parsedImages)) {
+          user.images = parsedImages.map(
+            (img) =>
+              `${req.protocol}://${req.get("host")}/uploads/profiles/${img}`
+          );
+        }
+      } catch (err) {
+        user.images = [];
+      }
     }
 
     res.status(200).json({ success: true, message: "Profile fetched", user });
@@ -344,88 +455,6 @@ const getProfile = async (req, res) => {
 };
 
 // ===================== UPDATE PROFILE =====================
-const updateProfile = async (req, res) => {
-  try {
-    const userId = req.user.id; // comes from auth middleware
-    const updates = { ...req.body };
-
-    // Handle restricted fields
-    const restricted = [
-      "id",
-      "email",
-      "password",
-      "otp_code",
-      "is_verified",
-      "created_at",
-      "updated_at",
-    ];
-    restricted.forEach((f) => delete updates[f]);
-
-    // Handle profile image upload & old image deletion
-    if (req.file) {
-      // Get old image from DB
-      const [rows] = await db.query(
-        "SELECT profile_image FROM users WHERE id = ?",
-        [userId]
-      );
-      if (rows.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
-
-      const oldImage = rows[0].profile_image;
-      if (oldImage) {
-        const oldPath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "profiles",
-          oldImage
-        );
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
-      }
-
-      // Set new image in update data
-      updates.profile_image = req.file.filename;
-    }
-
-    if (!updates || Object.keys(updates).length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No fields to update" });
-    }
-
-    // Build SQL dynamically
-    const setClause = Object.keys(updates)
-      .map((f) => `${f} = ?`)
-      .join(", ");
-    const values = Object.values(updates);
-
-    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [
-      ...values,
-      userId,
-    ]);
-
-    // Fetch updated user
-    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [
-      userId,
-    ]);
-    delete updatedUser[0].password;
-    delete updatedUser[0].otp_code;
-
-    res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      user: updatedUser[0],
-    });
-  } catch (error) {
-    console.error("❌ updateProfile error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
 
 module.exports = {
   registerUser,

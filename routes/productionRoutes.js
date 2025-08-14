@@ -20,8 +20,6 @@ const productionProfileImage = require("../middleware/productionProfileImg");
 const productionAuth = require("../middleware/productionAuth");
 const jobCoverImageUpload = require("../middleware/job");
 
-
-
 // Register production house
 router.post("/register", registerProductionHouse);
 
@@ -40,8 +38,6 @@ router.post("/reset-password", resetProductionHousePassword);
 // Get profile - protected route
 router.get("/profile", productionAuth, getProductionHouseProfile);
 
-
-
 // Update profile - protected route + upload image
 router.put(
   "/profile",
@@ -50,30 +46,25 @@ router.put(
   updateProductionHouseProfile
 );
 
-
-
-
-// job 
+// job
 
 router.post(
   "/jobs",
-  productionAuth, 
-  jobCoverImageUpload.single("cover_photo"),
+  productionAuth,
+  jobCoverImageUpload.single("image"),
   addJob
 );
 
 router.put(
   "/jobs/:id",
-  productionAuth, 
-  jobCoverImageUpload.single("cover_photo"),
+  productionAuth,
+  jobCoverImageUpload.single("image"),
   editJob
 );
 // Delete Job
-router.delete("/jobs/:id",productionAuth, deleteJob);
-
+router.delete("/jobs/:id", productionAuth, deleteJob);
 
 router.get("/jobs", getAllJobs);
-
 
 router.get("/jobs/:id", getJobById);
 

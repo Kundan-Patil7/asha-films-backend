@@ -47,7 +47,7 @@ router.get("/clients", getClients);
 router.delete("/clients/:id", deleteClient);
 
 // ✅ Featured Artists Routes
-router.post("/artists", artistUpload.single("Image"), addFeaturedArtist);
+router.post("/artists", artistUpload.single("image"), addFeaturedArtist);
 router.get("/artists", getAllFeaturedArtists);
 router.delete("/artists/:id", deleteFeaturedArtist);
 

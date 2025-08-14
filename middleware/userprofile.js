@@ -1,3 +1,4 @@
+// middleware/userprofile.js
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -14,7 +15,7 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    const uniqueName = `profile-${Date.now()}${ext}`;
+    const uniqueName = `${file.fieldname}-${Date.now()}${ext}`;
     cb(null, uniqueName);
   }
 });
@@ -22,7 +23,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max
+    fileSize: 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png/;
