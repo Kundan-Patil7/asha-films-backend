@@ -1,2 +1,12 @@
 .env
 node_modules
+
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
+*.webp
+
+

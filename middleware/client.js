@@ -12,7 +12,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
-    cb(null, "client-" + uniqueSuffix + ext);
+    cb(null, file.fieldname + "-" + uniqueSuffix + ext); // ✅ Prefix with fieldname
   },
 });
 
@@ -25,18 +25,12 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 20 * 1024 * 1024 }, 
-}).single("image");
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB per file
+});
 
-const clientUpload = (req, res, next) => {
-  upload(req, res, (err) => {
-    if (err instanceof multer.MulterError) {
-      return res.status(400).json({ success: false, message: err.message });
-    } else if (err) {
-      return res.status(500).json({ success: false, message: err.message });
-    }
-    next();
-  });
-};
+const clientUpload = upload.fields([
+  { name: "image", maxCount: 1 },   // Single profile image
+  { name: "images", maxCount: 80 }, // Multiple gallery images
+]);
 
 module.exports = clientUpload;

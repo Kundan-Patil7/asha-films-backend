@@ -576,30 +576,48 @@ const createClient = async (req, res) => {
   try {
     await initClientsTable();
 
-    if (!req.file) {
+    // Check profile image
+    const profileImage = req.files["image"] ? req.files["image"][0].filename : null;
+
+    // Check gallery images
+    const galleryImages = req.files["images"] 
+      ? req.files["images"].map((file) => file.filename) 
+      : [];
+
+    if (!profileImage && galleryImages.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Client image is required",
+        message: "At least one client image is required",
       });
     }
 
-    const filename = req.file.filename;
+    // Insert profile image
+    if (profileImage) {
+      await db.query("INSERT INTO clients (image) VALUES (?)", [profileImage]);
+    }
 
-    await db.query("INSERT INTO clients (image) VALUES (?)", [filename]);
+    // Insert gallery images
+    for (const filename of galleryImages) {
+      await db.query("INSERT INTO clients (image) VALUES (?)", [filename]);
+    }
 
     res.status(201).json({
       success: true,
-      message: "Client added successfully",
+      message: "Clients added successfully",
+      profileImage,
+      galleryImages,
     });
   } catch (err) {
     console.error("Error creating client:", err);
     res.status(500).json({
       success: false,
-      message: "Failed to create client",
+      message: "Failed to create clients",
       error: err.message,
     });
   }
 };
+
+
 
 // Get all clients (GET)
 const getClients = async (req, res) => {
