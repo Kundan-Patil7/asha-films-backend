@@ -15,6 +15,7 @@ const {
   deleteJob,
   getAllJobs,
   getJobById,
+  resendProductionHouseOTP,
 } = require("../controllers/productionController");
 const productionProfileImage = require("../middleware/productionProfileImg");
 const productionAuth = require("../middleware/productionAuth");
@@ -37,6 +38,9 @@ router.post("/reset-password", resetProductionHousePassword);
 
 // Get profile - protected route
 router.get("/profile", productionAuth, getProductionHouseProfile);
+
+// Resend OTP for production house
+router.post("/resend-otp", resendProductionHouseOTP);
 
 // Update profile - protected route + upload image
 router.put(

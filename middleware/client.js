@@ -30,7 +30,7 @@ const upload = multer({
 
 const clientUpload = upload.fields([
   { name: "image", maxCount: 1 },   // Single profile image
-  { name: "images", maxCount: 80 }, // Multiple gallery images
+  { name: "images", maxCount: 20 }, // Multiple gallery images
 ]);
 
 module.exports = clientUpload;

@@ -34,9 +34,10 @@ const registerUser = async (req, res) => {
         blocked BOOLEAN DEFAULT FALSE,
         otp_code VARCHAR(6) NULL,
         is_verified BOOLEAN DEFAULT 0,
-        pan_no VARCHAR(50) NOT NULL,
-        aadhaar_no VARCHAR(50) NOT NULL,
+        pan_no VARCHAR(50) NOT NULL UNIQUE ,
+        aadhaar_no VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(255) NOT NULL,
+        first_name VARCHAR(255)  NULL,
         middle_name VARCHAR(255) NULL,
         last_name VARCHAR(255) NULL,
         date_of_birth DATE NULL,
@@ -45,14 +46,13 @@ const registerUser = async (req, res) => {
         country VARCHAR(100) NULL,
         state VARCHAR(100) NULL,
         city VARCHAR(100) NULL,
-        village VARCHAR(100) NULL,
-        passport VARCHAR(50) NULL,
-        driver_license VARCHAR(50) NULL,
+        nationality VARCHAR(100) NULL,
+        passport BOOLEAN DEFAULT FALSE,
+        driver_license BOOLEAN DEFAULT FALSE,
         cinta_card VARCHAR(50) NULL,
         height INT NULL,
         weight INT NULL,
         shoe_size VARCHAR(10) NULL,
-        nationality VARCHAR(100) NULL,
         language VARCHAR(255) NULL,
         hobbies TEXT NULL,
         sports TEXT NULL,
@@ -98,6 +98,7 @@ const registerUser = async (req, res) => {
         period_roles BOOLEAN DEFAULT FALSE,
         fantasy_sci_fi_roles BOOLEAN DEFAULT FALSE,
         special_category BOOLEAN DEFAULT FALSE,
+        special_niche VARCHAR(255) NULL,
         plus_size_model BOOLEAN DEFAULT FALSE,
         petite_model BOOLEAN DEFAULT FALSE,
         lgbtq_friendly BOOLEAN DEFAULT FALSE,
@@ -125,6 +126,11 @@ const registerUser = async (req, res) => {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );
     `;
+
+
+      
+
+
     await db.query(createUserTable);
 
     const [existingUsers] = await db.query(
@@ -454,6 +460,51 @@ const getProfile = async (req, res) => {
   }
 };
 
+const resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Email is required" });
+    }
+
+    // Check if user exists
+    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [
+      email,
+    ]);
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    const user = rows[0];
+
+    // Generate new OTP
+    const otp = generateOTP();
+
+    // Update OTP in database
+    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [
+      otp,
+      email,
+    ]);
+
+    // In production, you would send OTP via email/SMS here
+    // For demo purposes, returning OTP in response
+    res.status(200).json({
+      success: true,
+      message: "OTP resent successfully",
+      otp, // remove in production
+    });
+  } catch (error) {
+    console.error("❌ resendOTP error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 // ===================== UPDATE PROFILE =====================
 
 module.exports = {
@@ -464,4 +515,5 @@ module.exports = {
   getProfile,
   updateProfile,
   resetPassword,
+  resendOTP,
 };

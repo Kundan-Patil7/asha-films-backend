@@ -217,6 +217,7 @@ const verifyProductionHouseOTP = async (req, res) => {
 const forgotProductionHousePassword = async (req, res) => {
   try {
     const { email } = req.body;
+
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -236,16 +237,27 @@ const forgotProductionHousePassword = async (req, res) => {
       });
     }
 
+    const prod = rows[0];
+
+    // 🔍 Check if verified
+    if (!prod.verified) {
+      return res.status(403).json({
+        success: false,
+        message: "Please verify your account first before resetting password",
+      });
+    }
+
     const otp = generateOTP();
-    await db.query(`UPDATE production_house SET otp_code = ? WHERE email = ?`, [
-      otp,
-      email,
-    ]);
+
+    await db.query(
+      `UPDATE production_house SET otp_code = ? WHERE email = ?`,
+      [otp, email]
+    );
 
     res.status(200).json({
       success: true,
       message: "OTP sent (for demo returned in response)",
-      otp, // Remove in production - only for testing
+      otp, // ⚠️ Remove in production
     });
   } catch (error) {
     console.error("❌ forgotProductionHousePassword error:", error);
@@ -256,6 +268,7 @@ const forgotProductionHousePassword = async (req, res) => {
     });
   }
 };
+
 
 const resetProductionHousePassword = async (req, res) => {
   try {
@@ -417,6 +430,65 @@ const updateProductionHouseProfile = async (req, res) => {
     });
   }
 };
+
+// ===================== RESEND OTP =====================
+const resendProductionHouseOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Check if account exists
+    const [rows] = await db.query(
+      `SELECT * FROM production_house WHERE email = ?`,
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
+
+    const prod = rows[0];
+
+    if (prod.verified) {
+      return res.status(400).json({
+        success: false,
+        message: "Account already verified. No need to resend OTP",
+      });
+    }
+
+    // Generate new OTP
+    const otp = generateOTP();
+
+    // Save new OTP
+    await db.query(
+      `UPDATE production_house SET otp_code = ? WHERE email = ?`,
+      [otp, email]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "OTP resent successfully (for demo returned in response)",
+      otp, // ⚠️ remove in production
+    });
+  } catch (error) {
+    console.error("❌ resendProductionHouseOTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 
 
 // ===================== JOB MANAGEMENT =====================
@@ -714,4 +786,5 @@ module.exports = {
   deleteJob,
   getAllJobs,
   getJobById,
+  resendProductionHouseOTP,
 };
