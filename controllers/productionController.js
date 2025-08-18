@@ -43,22 +43,48 @@ const registerProductionHouse = async (req, res) => {
 
     // Create table if not exists
     await db.query(`
-      CREATE TABLE IF NOT EXISTS production_house (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        gst_no VARCHAR(50) NOT NULL,
-        pan_no VARCHAR(50) NOT NULL,
-        aadhaar_no VARCHAR(50) NOT NULL,
-        company_name VARCHAR(255) NOT NULL,
-        type_of_work VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        phone_number VARCHAR(20) NOT NULL UNIQUE,
-        password VARCHAR(255) NOT NULL,
-        image VARCHAR(255) NULL,
-        otp_code VARCHAR(6) NULL,
-        verified BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
+     CREATE TABLE IF NOT EXISTS production_house (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    gst_no VARCHAR(50) NOT NULL,
+    pan_no VARCHAR(50) NOT NULL,
+    aadhaar_no VARCHAR(50) NOT NULL,
+    company_name VARCHAR(255) NOT NULL, -- Company/Agency Name
+    owner_name VARCHAR(255)  NULL,   -- Owner / Representative Name
+    email VARCHAR(255) NOT NULL UNIQUE,
+    phone_number VARCHAR(20) NOT NULL UNIQUE,
+    alternate_contact VARCHAR(20) NULL,
+    location VARCHAR(255) NULL,
+    website_url VARCHAR(255) NULL,
+    
+    type_of_work VARCHAR(255) NOT NULL, -- General description of work
+    password VARCHAR(255) NOT NULL,
+    image VARCHAR(255) NULL,
+    
+    otp_code VARCHAR(6) NULL,
+    verified BOOLEAN DEFAULT FALSE,
+    
+    -- Industry type flags (T/F)
+    is_casting_director BOOLEAN DEFAULT FALSE,
+    is_production_house BOOLEAN DEFAULT FALSE,
+    is_ad_agency BOOLEAN DEFAULT FALSE,
+    is_event_agency BOOLEAN DEFAULT FALSE,
+    is_theater_group BOOLEAN DEFAULT FALSE,
+    is_studio BOOLEAN DEFAULT FALSE,
+    is_talent_agency BOOLEAN DEFAULT FALSE,
+
+    -- Work domain flags (T/F)
+    works_tv BOOLEAN DEFAULT FALSE,
+    works_film BOOLEAN DEFAULT FALSE,
+    works_ott BOOLEAN DEFAULT FALSE,
+    works_ads BOOLEAN DEFAULT FALSE,
+    works_print BOOLEAN DEFAULT FALSE,
+    works_theatre BOOLEAN DEFAULT FALSE,
+    works_events BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
     `);
 
     // Check for existing user
