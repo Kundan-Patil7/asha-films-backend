@@ -1,5 +1,7 @@
 const db = require("../config/database");
 
+
+    
 // Home page
 const getHomeData = async (req, res) => {
   try {
@@ -203,7 +205,7 @@ const getHomeData = async (req, res) => {
 //     const [users] = await db.query(query, params);
 
 //     // 🔥 Convert image filename -> full URL
-//     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
+  //  const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
 //     const formattedUsers = users.map((user) => ({
 //       id: user.id,
 //       name: user.name,
@@ -232,6 +234,9 @@ const getHomeData = async (req, res) => {
 
 const filterUsers = async (req, res) => {
   try {
+
+    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
+    
     const query = `SELECT name, date_of_birth, gender, city, image 
                    FROM users WHERE is_verified = 1`;
 
