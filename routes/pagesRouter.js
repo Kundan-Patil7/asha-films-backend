@@ -1,6 +1,6 @@
 const express = require("express");
 
-const { getHomeData } = require("../controllers/pagesController");
+const { getHomeData, filterUsers } = require("../controllers/pagesController");
 
 
 const router = express.Router();
@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.get('/home', getHomeData );
 
-
+router.get("/filter", filterUsers);
 
 // Export the router
 module.exports = router;
