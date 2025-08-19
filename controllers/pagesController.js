@@ -203,7 +203,7 @@ const filterUsers = async (req, res) => {
     const [users] = await db.query(query, params);
 
     // 🔥 Convert image filename -> full URL
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/profiles/`;
+    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
     const formattedUsers = users.map((user) => ({
       id: user.id,
       name: user.name,

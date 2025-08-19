@@ -120,7 +120,11 @@ const registerUser = async (req, res) => {
         lookalike_actor_name VARCHAR(255) NULL,
         skills TEXT NULL,
         image VARCHAR(255) NULL,
-        images JSON NULL,
+        images JSON DEFAULT NULL,
+         headshot_image VARCHAR(255) DEFAULT NULL,
+         full_image VARCHAR(255) DEFAULT NULL,
+         audition_video VARCHAR(255) DEFAULT NULL,
+         portfolio_link VARCHAR(255) DEFAULT NULL,
         availabilities TEXT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -161,7 +165,7 @@ const registerUser = async (req, res) => {
   }
 };
 
-// ===================== UPDATE PROFILE =====================
+// ===================== UPDATED PROFILE FUNCTION =====================
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -178,7 +182,7 @@ const updateProfile = async (req, res) => {
     ];
     restricted.forEach((f) => delete updates[f]);
 
-    // Handle single image upload
+    // 📸 Handle single profile image
     if (req.files && req.files.image) {
       const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [
         userId,
@@ -195,30 +199,105 @@ const updateProfile = async (req, res) => {
           __dirname,
           "..",
           "uploads",
-          "profiles",
+          "user_media",
           oldImage
         );
-        if (fs.existsSync(oldPath)) {
-          fs.unlinkSync(oldPath);
-        }
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
       }
 
       updates.image = req.files.image[0].filename;
     }
 
-    // Handle multiple images upload (append mode)
+    // 🎭 Handle headshot image - ADDED THIS
+    if (req.files && req.files.headshot_image) {
+      const [rows] = await db.query(
+        "SELECT headshot_image FROM users WHERE id = ?",
+        [userId]
+      );
+      if (rows.length === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const oldHeadshot = rows[0].headshot_image;
+      if (oldHeadshot) {
+        const oldPath = path.join(
+          __dirname,
+          "..",
+          "uploads",
+          "user_media",
+          oldHeadshot
+        );
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      updates.headshot_image = req.files.headshot_image[0].filename;
+    }
+
+    // 🧍 Handle full body image - ADDED THIS
+    if (req.files && req.files.full_image) {
+      const [rows] = await db.query(
+        "SELECT full_image FROM users WHERE id = ?",
+        [userId]
+      );
+      if (rows.length === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const oldFullImage = rows[0].full_image;
+      if (oldFullImage) {
+        const oldPath = path.join(
+          __dirname,
+          "..",
+          "uploads",
+          "user_media",
+          oldFullImage
+        );
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      updates.full_image = req.files.full_image[0].filename;
+    }
+
+    // 📂 Handle multiple images upload (append mode)
     if (req.files && req.files.images) {
       const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [
         userId,
       ]);
-
-      let currentImages = [];
-      if (rows[0].images) {
-        currentImages = JSON.parse(rows[0].images);
-      }
+      let currentImages = rows[0].images ? JSON.parse(rows[0].images) : [];
 
       const newImages = req.files.images.map((file) => file.filename);
       updates.images = JSON.stringify([...currentImages, ...newImages]);
+    }
+
+    // 🎬 Handle audition video upload
+    if (req.files && req.files.audition_video) {
+      const [rows] = await db.query(
+        "SELECT audition_video FROM users WHERE id = ?",
+        [userId]
+      );
+
+      const oldVideo = rows[0]?.audition_video;
+      if (oldVideo) {
+        const oldPath = path.join(
+          __dirname,
+          "..",
+          "uploads",
+          "user_media",
+          oldVideo
+        );
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+      }
+
+      updates.audition_video = req.files.audition_video[0].filename;
+    }
+
+    // Handle portfolio link
+    if (updates.portfolio_link) {
+      updates.portfolio_link = updates.portfolio_link.trim();
     }
 
     if (!updates || Object.keys(updates).length === 0) {
@@ -346,7 +425,6 @@ const loginUser = async (req, res) => {
       success: true,
       message: "Login successful",
       token,
-     
     });
   } catch (error) {
     console.error("❌ loginUser error:", error);
@@ -436,21 +514,21 @@ const getProfile = async (req, res) => {
     delete user.password;
     delete user.otp_code;
 
-    // Single image URL
+    // ✅ Single profile image URL
     if (user.image) {
-      user.image = `${req.protocol}://${req.get("host")}/uploads/profiles/${
+      user.image = `${req.protocol}://${req.get("host")}/uploads/user_media/${
         user.image
       }`;
     }
 
-    // Multiple images URLs
+    // ✅ Multiple gallery images URLs
     if (user.images) {
       try {
         const parsedImages = JSON.parse(user.images);
         if (Array.isArray(parsedImages)) {
           user.images = parsedImages.map(
             (img) =>
-              `${req.protocol}://${req.get("host")}/uploads/profiles/${img}`
+              `${req.protocol}://${req.get("host")}/uploads/user_media/${img}`
           );
         }
       } catch (err) {
@@ -458,7 +536,35 @@ const getProfile = async (req, res) => {
       }
     }
 
-    res.status(200).json({ success: true, message: "Profile fetched", user });
+    // ✅ Headshot image URL
+    if (user.headshot_image) {
+      user.headshot_image = `${req.protocol}://${req.get(
+        "host"
+      )}/uploads/user_media/${user.headshot_image}`;
+    }
+
+    // ✅ Full body image URL
+    if (user.full_image) {
+      user.full_image = `${req.protocol}://${req.get(
+        "host"
+      )}/uploads/user_media/${user.full_image}`;
+    }
+
+    // ✅ Audition video URL
+    if (user.audition_video) {
+      user.audition_video = `${req.protocol}://${req.get(
+        "host"
+      )}/uploads/user_media/${user.audition_video}`;
+    }
+
+    // ✅ Portfolio link stays as is (text/URL from body)
+    // no need to prefix because it's already a link
+
+    res.status(200).json({
+      success: true,
+      message: "Profile fetched",
+      user,
+    });
   } catch (error) {
     console.error("❌ getProfile error:", error);
     res.status(500).json({ success: false, message: "Server error" });

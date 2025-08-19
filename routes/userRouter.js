@@ -11,8 +11,7 @@ const {
   resendOTP
 } = require("../controllers/userController");
 const authMiddleware = require("../middleware/user");
-const upload = require("../middleware/userprofile");
-
+const combinedUpload = require("../middleware/userprofile")
 const router = express.Router();
 
 router.post("/register", registerUser);
@@ -26,11 +25,16 @@ router.get("/profile", authMiddleware, getProfile);
 router.put(
   "/profile",
   authMiddleware,
-  upload.fields([
-    { name: "image", maxCount: 1 },   // Single profile image
-    { name: "images", maxCount: 10 }  // Multiple gallery images
+  combinedUpload.fields([
+    { name: "image", maxCount: 1 },           // single profile image
+    { name: "images", maxCount: 10 },         // multiple gallery images
+    { name: "headshot_image", maxCount: 1 },  // headshot
+    { name: "full_image", maxCount: 1 },      // full body
+    { name: "audition_video", maxCount: 1 }   // audition video
   ]),
   updateProfile
 );
+
+
 
 module.exports = router;
