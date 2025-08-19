@@ -238,8 +238,7 @@ const filterUsers = async (req, res) => {
     const [users] = await db.query(query);
 
     // Convert image filename -> full URL
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
-    const formattedUsers = users.map((user) => ({
+    const Users = users.map((user) => ({
       name: user.name,
       age: new Date().getFullYear() - new Date(user.date_of_birth).getFullYear(),
       gender: user.gender,
@@ -249,7 +248,7 @@ const filterUsers = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: formattedUsers,
+      data: Users,
     });
   } catch (error) {
     console.error("❌ filterUsers error:", error);
