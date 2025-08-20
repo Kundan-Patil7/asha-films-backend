@@ -234,20 +234,37 @@ const getHomeData = async (req, res) => {
 
 const filterUsers = async (req, res) => {
   try {
-
     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
-    
-    const query = `SELECT name, date_of_birth, gender, city, image 
-                   FROM users WHERE is_verified = 1`;
+
+    // ✅ Select all required fields
+    const query = `
+      SELECT 
+        name, 
+        date_of_birth, 
+        gender, 
+        city, 
+        image, 
+        hair_color, 
+        body_type, 
+        beard, 
+        eye_color
+      FROM users 
+      WHERE is_verified = 1
+    `;
 
     const [users] = await db.query(query);
 
-    // Convert image filename -> full URL
     const Users = users.map((user) => ({
       name: user.name,
-      age: new Date().getFullYear() - new Date(user.date_of_birth).getFullYear(),
-      gender: user.gender,
-      city: user.city,
+      age: user.date_of_birth
+        ? new Date().getFullYear() - new Date(user.date_of_birth).getFullYear()
+        : null,
+      gender: user.gender || null,
+      city: user.city || null,
+      hair_color: user.hair_color || null,
+      body_type: user.body_type || null,
+      beard: user.beard || null,
+      eye_color: user.eye_color || null,
       image: user.image ? baseUrl + user.image : null,
     }));
 
@@ -260,6 +277,7 @@ const filterUsers = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 module.exports = {
