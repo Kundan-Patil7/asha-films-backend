@@ -436,6 +436,7 @@ const loginUser = async (req, res) => {
         image: user.image
           ? `${req.protocol}://${req.get("host")}/uploads/user_media/${user.image}`
           : null,
+          updated_at: user.updated_at,
       },
     });
   } catch (error) {

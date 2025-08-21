@@ -180,6 +180,7 @@ const loginProductionHouse = async (req, res) => {
         phone_number: prod.phone_number,
         image: prod.image ? getFileUrl(req, "production", prod.image) : null,
         type: prod.type_of_work,
+        updated_at : prod.updated_at,
       },
     });
   } catch (error) {
