@@ -47,6 +47,7 @@ const registerUser = async (req, res) => {
         state VARCHAR(100) NULL,
         city VARCHAR(100) NULL,
         nationality VARCHAR(100) NULL,
+        profileType VARCHAR(100) NULL,
         passport BOOLEAN DEFAULT FALSE,
         driver_license BOOLEAN DEFAULT FALSE,
         cinta_card VARCHAR(50) NULL,
@@ -425,6 +426,17 @@ const loginUser = async (req, res) => {
       success: true,
       message: "Login successful",
       token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        plan: user.plan,
+        is_verified: user.is_verified,
+        image: user.image
+          ? `${req.protocol}://${req.get("host")}/uploads/user_media/${user.image}`
+          : null,
+      },
     });
   } catch (error) {
     console.error("❌ loginUser error:", error);

@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const path = require("path");
 const fs = require("fs");
 const { log } = require("console");
+const { type } = require("os");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -178,6 +179,7 @@ const loginProductionHouse = async (req, res) => {
         email: prod.email,
         phone_number: prod.phone_number,
         image: prod.image ? getFileUrl(req, "production", prod.image) : null,
+        type: prod.type_of_work,
       },
     });
   } catch (error) {
