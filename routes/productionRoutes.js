@@ -16,6 +16,9 @@ const {
   getAllJobs,
   getJobById,
   resendProductionHouseOTP,
+  getAllApplicationsByProduction,
+  getApplicationsByJob,
+  MyJobPostings,
 } = require("../controllers/productionController");
 const productionProfileImage = require("../middleware/productionProfileImg");
 const productionAuth = require("../middleware/productionAuth");
@@ -71,5 +74,14 @@ router.delete("/jobs/:id", productionAuth, deleteJob);
 router.get("/jobs", getAllJobs);
 
 router.get("/jobs/:id", getJobById);
+
+
+// all jobs by production 
+
+
+
+
+router.get("/applications", productionAuth, MyJobPostings);
+router.get("/applications/:id", productionAuth, getApplicationsByJob);
 
 module.exports = router;

@@ -3,14 +3,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const path = require("path");
 const fs = require("fs");
-const { log } = require("console");
-const { type } = require("os");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// ===================== UTILITIES =====================
+
 // OTP generator
-const generateOTP = () =>
-  Math.floor(100000 + Math.random() * 900000).toString();
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // Helper function to construct file URLs
 const getFileUrl = (req, folder, filename) => {
@@ -18,12 +17,37 @@ const getFileUrl = (req, folder, filename) => {
   return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
 };
 
+// Helper function to construct image URLs
+const constructImageUrl = (req, folder, filename) => {
+  if (!filename) return null;
+  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+};
+
+// Helper function to delete old files
+const deleteOldFile = (filename, folder) => {
+  if (filename) {
+    const filePath = path.join(__dirname, "..", "uploads", folder, filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+};
+
+// Helper function to calculate age from date of birth
+const calculateAge = (dateOfBirth) => {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  const diff = Date.now() - dob.getTime();
+  return new Date(diff).getUTCFullYear() - 1970;
+};
+
 // ===================== PRODUCTION HOUSE AUTHENTICATION =====================
+
 const registerProductionHouse = async (req, res) => {
   try {
     const requiredFields = [
       "gst_no",
-      "pan_no",
+      "pan_no", 
       "aadhaar_no",
       "company_name",
       "type_of_work",
@@ -32,7 +56,8 @@ const registerProductionHouse = async (req, res) => {
       "password",
     ];
 
-    const missingFields = requiredFields.filter((field) => !req.body[field]);
+    // Validate required fields
+    const missingFields = requiredFields.filter(field => !req.body[field]);
     if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
@@ -42,53 +67,50 @@ const registerProductionHouse = async (req, res) => {
 
     const { email, phone_number } = req.body;
 
-    // Create table if not exists
+    // Create production_house table if not exists
     await db.query(`
-     CREATE TABLE IF NOT EXISTS production_house (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    gst_no VARCHAR(50) NOT NULL,
-    pan_no VARCHAR(50) NOT NULL,
-    aadhaar_no VARCHAR(50) NOT NULL,
-    company_name VARCHAR(255) NOT NULL, -- Company/Agency Name
-    owner_name VARCHAR(255)  NULL,   -- Owner / Representative Name
-    email VARCHAR(255) NOT NULL UNIQUE,
-    phone_number VARCHAR(20) NOT NULL UNIQUE,
-    alternate_contact VARCHAR(20) NULL,
-    location VARCHAR(255) NULL,
-    website_url VARCHAR(255) NULL,
-    
-    type_of_work VARCHAR(255) NOT NULL, -- General description of work
-    password VARCHAR(255) NOT NULL,
-    image VARCHAR(255) NULL,
-    
-    otp_code VARCHAR(6) NULL,
-    verified BOOLEAN DEFAULT FALSE,
-    
-    -- Industry type flags (T/F)
-    is_casting_director BOOLEAN DEFAULT FALSE,
-    is_production_house BOOLEAN DEFAULT FALSE,
-    is_ad_agency BOOLEAN DEFAULT FALSE,
-    is_event_agency BOOLEAN DEFAULT FALSE,
-    is_theater_group BOOLEAN DEFAULT FALSE,
-    is_studio BOOLEAN DEFAULT FALSE,
-    is_talent_agency BOOLEAN DEFAULT FALSE,
+      CREATE TABLE IF NOT EXISTS production_house (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        gst_no VARCHAR(50) NOT NULL,
+        pan_no VARCHAR(50) NOT NULL,
+        aadhaar_no VARCHAR(50) NOT NULL,
+        company_name VARCHAR(255) NOT NULL,
+        owner_name VARCHAR(255) NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        phone_number VARCHAR(20) NOT NULL UNIQUE,
+        alternate_contact VARCHAR(20) NULL,
+        location VARCHAR(255) NULL,
+        website_url VARCHAR(255) NULL,
+        type_of_work VARCHAR(255) NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        image VARCHAR(255) NULL,
+        otp_code VARCHAR(6) NULL,
+        verified BOOLEAN DEFAULT FALSE,
+        
+        -- Industry type flags
+        is_casting_director BOOLEAN DEFAULT FALSE,
+        is_production_house BOOLEAN DEFAULT FALSE,
+        is_ad_agency BOOLEAN DEFAULT FALSE,
+        is_event_agency BOOLEAN DEFAULT FALSE,
+        is_theater_group BOOLEAN DEFAULT FALSE,
+        is_studio BOOLEAN DEFAULT FALSE,
+        is_talent_agency BOOLEAN DEFAULT FALSE,
 
-    -- Work domain flags (T/F)
-    works_tv BOOLEAN DEFAULT FALSE,
-    works_film BOOLEAN DEFAULT FALSE,
-    works_ott BOOLEAN DEFAULT FALSE,
-    works_ads BOOLEAN DEFAULT FALSE,
-    works_print BOOLEAN DEFAULT FALSE,
-    works_theatre BOOLEAN DEFAULT FALSE,
-    works_events BOOLEAN DEFAULT FALSE,
+        -- Work domain flags
+        works_tv BOOLEAN DEFAULT FALSE,
+        works_film BOOLEAN DEFAULT FALSE,
+        works_ott BOOLEAN DEFAULT FALSE,
+        works_ads BOOLEAN DEFAULT FALSE,
+        works_print BOOLEAN DEFAULT FALSE,
+        works_theatre BOOLEAN DEFAULT FALSE,
+        works_events BOOLEAN DEFAULT FALSE,
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      );
     `);
 
-    // Check for existing user
+    // Check for existing production house
     const [existing] = await db.query(
       `SELECT * FROM production_house WHERE email = ? OR phone_number = ?`,
       [email, phone_number]
@@ -126,10 +148,10 @@ const registerProductionHouse = async (req, res) => {
   }
 };
 
-// ===================== LOGIN =====================
 const loginProductionHouse = async (req, res) => {
   try {
     const { identifier, password } = req.body;
+
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
@@ -137,6 +159,7 @@ const loginProductionHouse = async (req, res) => {
       });
     }
 
+    // Find production house by email or phone
     const [rows] = await db.query(
       `SELECT * FROM production_house WHERE email = ? OR phone_number = ?`,
       [identifier, identifier]
@@ -150,6 +173,8 @@ const loginProductionHouse = async (req, res) => {
     }
 
     const prod = rows[0];
+
+    // Check if account is verified
     if (!prod.verified) {
       return res.status(403).json({
         success: false,
@@ -157,6 +182,7 @@ const loginProductionHouse = async (req, res) => {
       });
     }
 
+    // Verify password
     const isMatch = await bcrypt.compare(password, prod.password);
     if (!isMatch) {
       return res.status(401).json({
@@ -165,6 +191,7 @@ const loginProductionHouse = async (req, res) => {
       });
     }
 
+    // Generate JWT token
     const token = jwt.sign({ id: prod.id, email: prod.email }, JWT_SECRET, {
       expiresIn: "8h",
     });
@@ -178,9 +205,9 @@ const loginProductionHouse = async (req, res) => {
         company_name: prod.company_name,
         email: prod.email,
         phone_number: prod.phone_number,
-        image: prod.image ? getFileUrl(req, "production", prod.image) : null,
+        image: getFileUrl(req, "production", prod.image),
         type: prod.type_of_work,
-        updated_at : prod.updated_at,
+        updated_at: prod.updated_at,
       },
     });
   } catch (error) {
@@ -193,10 +220,10 @@ const loginProductionHouse = async (req, res) => {
   }
 };
 
-// ===================== VERIFY OTP =====================
 const verifyProductionHouseOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
+
     if (!email || !otp) {
       return res.status(400).json({
         success: false,
@@ -223,6 +250,7 @@ const verifyProductionHouseOTP = async (req, res) => {
       });
     }
 
+    // Mark account as verified and clear OTP
     await db.query(
       `UPDATE production_house SET verified = 1, otp_code = NULL WHERE email = ?`,
       [email]
@@ -242,7 +270,65 @@ const verifyProductionHouseOTP = async (req, res) => {
   }
 };
 
+const resendProductionHouseOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    // Check if account exists
+    const [rows] = await db.query(
+      `SELECT * FROM production_house WHERE email = ?`,
+      [email]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Account not found",
+      });
+    }
+
+    const prod = rows[0];
+
+    if (prod.verified) {
+      return res.status(400).json({
+        success: false,
+        message: "Account already verified. No need to resend OTP",
+      });
+    }
+
+    // Generate new OTP
+    const otp = generateOTP();
+
+    // Save new OTP
+    await db.query(
+      `UPDATE production_house SET otp_code = ? WHERE email = ?`,
+      [otp, email]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "OTP resent successfully (for demo returned in response)",
+      otp, // Remove in production
+    });
+  } catch (error) {
+    console.error("❌ resendProductionHouseOTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // ===================== PASSWORD RESET =====================
+
 const forgotProductionHousePassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -268,7 +354,7 @@ const forgotProductionHousePassword = async (req, res) => {
 
     const prod = rows[0];
 
-    // 🔍 Check if verified
+    // Check if verified
     if (!prod.verified) {
       return res.status(403).json({
         success: false,
@@ -286,7 +372,7 @@ const forgotProductionHousePassword = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "OTP sent (for demo returned in response)",
-      otp, // ⚠️ Remove in production
+      otp, // Remove in production
     });
   } catch (error) {
     console.error("❌ forgotProductionHousePassword error:", error);
@@ -298,10 +384,10 @@ const forgotProductionHousePassword = async (req, res) => {
   }
 };
 
-
 const resetProductionHousePassword = async (req, res) => {
   try {
     const { email, newPassword } = req.body;
+
     if (!email || !newPassword) {
       return res.status(400).json({
         success: false,
@@ -337,6 +423,7 @@ const resetProductionHousePassword = async (req, res) => {
 };
 
 // ===================== PROFILE MANAGEMENT =====================
+
 const getProductionHouseProfile = async (req, res) => {
   try {
     const [rows] = await db.query(
@@ -390,7 +477,7 @@ const updateProductionHouseProfile = async (req, res) => {
       "created_at",
       "updated_at",
     ];
-    restricted.forEach((f) => delete updates[f]);
+    restricted.forEach(field => delete updates[field]);
 
     // Handle image upload
     if (req.file) {
@@ -408,18 +495,7 @@ const updateProductionHouseProfile = async (req, res) => {
       }
 
       // Delete old image if exists
-      const oldImage = rows[0].image;
-      if (oldImage) {
-        const oldPath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "production",
-          oldImage
-        );
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-
+      deleteOldFile(rows[0].image, "production");
       updates.image = req.file.filename;
     }
 
@@ -460,67 +536,9 @@ const updateProductionHouseProfile = async (req, res) => {
   }
 };
 
-// ===================== RESEND OTP =====================
-const resendProductionHouseOTP = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required",
-      });
-    }
-
-    // Check if account exists
-    const [rows] = await db.query(
-      `SELECT * FROM production_house WHERE email = ?`,
-      [email]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Account not found",
-      });
-    }
-
-    const prod = rows[0];
-
-    if (prod.verified) {
-      return res.status(400).json({
-        success: false,
-        message: "Account already verified. No need to resend OTP",
-      });
-    }
-
-    // Generate new OTP
-    const otp = generateOTP();
-
-    // Save new OTP
-    await db.query(
-      `UPDATE production_house SET otp_code = ? WHERE email = ?`,
-      [otp, email]
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "OTP resent successfully (for demo returned in response)",
-      otp, // ⚠️ remove in production
-    });
-  } catch (error) {
-    console.error("❌ resendProductionHouseOTP error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
-
-
-
 // ===================== JOB MANAGEMENT =====================
+
+// Initialize job table
 const initJobTable = async () => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS job (
@@ -561,14 +579,15 @@ const addJob = async (req, res) => {
 
     const requiredFields = [
       "project_type",
-      "project_description",
+      "project_description", 
       "language_required",
       "phone_number",
       "email",
       "city_location",
     ];
 
-    const missingFields = requiredFields.filter((field) => !req.body[field]);
+    // Validate required fields
+    const missingFields = requiredFields.filter(field => !req.body[field]);
     if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
@@ -629,17 +648,11 @@ const editJob = async (req, res) => {
 
     if (req.file) {
       // Delete old image if exists
-      if (image) {
-        const oldPath = path.join(__dirname, "..", "uploads", "jobs", image);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
+      deleteOldFile(image, "jobs");
       image = req.file.filename;
     } else if (req.body.remove_image === "true") {
       // Remove image if requested
-      if (image) {
-        const oldPath = path.join(__dirname, "..", "uploads", "jobs", image);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
+      deleteOldFile(image, "jobs");
       image = null;
     }
 
@@ -648,12 +661,12 @@ const editJob = async (req, res) => {
     // Remove restricted fields
     const restricted = [
       "id",
-      "production_house_id",
+      "production_house_id", 
       "production_house_name",
       "created_at",
       "updated_at",
     ];
-    restricted.forEach((f) => delete updates[f]);
+    restricted.forEach(field => delete updates[field]);
 
     await db.query(`UPDATE job SET ? WHERE id = ?`, [updates, id]);
 
@@ -696,16 +709,7 @@ const deleteJob = async (req, res) => {
     }
 
     // Delete image if exists
-    if (existingJob[0].image) {
-      const filePath = path.join(
-        __dirname,
-        "..",
-        "uploads",
-        "jobs",
-        existingJob[0].image
-      );
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
+    deleteOldFile(existingJob[0].image, "jobs");
 
     await db.query(`DELETE FROM job WHERE id = ?`, [id]);
 
@@ -726,21 +730,15 @@ const deleteJob = async (req, res) => {
 const getAllJobs = async (req, res) => {
   try {
     const [jobs] = await db.query(`
-      SELECT 
-        j.*,
-        CONCAT('${req.protocol}://${req.get(
-      "host"
-    )}/uploads/jobs/', j.image) AS image_url
+      SELECT j.*
       FROM job j
       ORDER BY j.created_at DESC
     `);
 
-    // Format the results
-    const formattedJobs = jobs.map((job) => ({
+    // Format the results with image URLs
+    const formattedJobs = jobs.map(job => ({
       ...job,
-      image: job.image
-        ? `${req.protocol}://${req.get("host")}/uploads/jobs/${job.image}`
-        : null,
+      image: constructImageUrl(req, "jobs", job.image),
     }));
 
     res.status(200).json({
@@ -757,20 +755,13 @@ const getAllJobs = async (req, res) => {
     });
   }
 };
+
 const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
 
     const [jobs] = await db.query(
-      `
-      SELECT 
-        j.*,
-        CONCAT('${req.protocol}://${req.get(
-        "host"
-      )}/uploads/jobs/', j.image) AS image_url
-      FROM job j
-      WHERE j.id = ?
-      `,
+      `SELECT j.* FROM job j WHERE j.id = ?`,
       [id]
     );
 
@@ -784,9 +775,7 @@ const getJobById = async (req, res) => {
     const job = jobs[0];
     const responseData = {
       ...job,
-      // Ensure consistent field names in response
-      image: job.image_url || null,
-      image_url: undefined, // Remove duplicate field
+      image: constructImageUrl(req, "jobs", job.image) || null,
     };
 
     res.status(200).json({
@@ -802,6 +791,250 @@ const getJobById = async (req, res) => {
     });
   }
 };
+
+const MyJobPostings = async (req, res) => {
+  try {
+    const production_house_id = req.user.id;
+
+    // Enhanced SQL query with application count
+    const sql = `
+      SELECT 
+        j.*,
+        COUNT(ja.application_id) as application_count
+      FROM job j
+      LEFT JOIN job_applications ja ON j.id = ja.production_id
+      WHERE j.production_house_id = ?
+      GROUP BY j.id
+      ORDER BY j.created_at DESC
+    `;
+
+    const [results] = await db.query(sql, [production_house_id]);
+
+    if (results.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No job postings found",
+        data: [],
+        count: 0,
+      });
+    }
+
+    // Format jobs with image URLs and additional info
+    const jobs = results.map(job => {
+      return {
+        ...job,
+        image_url: constructImageUrl(req, "jobCovers", job.image),
+        application_count: parseInt(job.application_count) || 0,
+        // Add status based on application deadline
+        status: job.application_deadline && new Date(job.application_deadline) < new Date() 
+          ? 'expired' 
+          : 'active'
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Job postings fetched successfully",
+      data: jobs,
+      count: jobs.length,
+    });
+  } catch (error) {
+    console.error("❌ MyJobPostings error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Database error while fetching job postings",
+      error: error.message,
+    });
+  }
+};
+
+// ===================== JOB APPLICATION MANAGEMENT =====================
+
+const getAllApplicationsByProduction = async (req, res) => {
+  try {
+    const production_id = req.user.id; // From middleware
+
+    const sql = `
+      SELECT 
+        ja.application_id,
+        ja.status,
+        ja.role_specific_info,
+        ja.travel,
+        ja.availability,
+        ja.created_at,
+        j.id as job_id,
+        j.project_type,
+        j.project_description,
+        j.role_type,
+        j.gender,
+        j.age_range,
+        u.id as user_id,
+        u.name,
+        u.email,
+        u.mobile,
+        u.city,
+        u.date_of_birth,
+        u.image as user_image
+      FROM job_applications ja
+      JOIN job j ON ja.production_id = j.id
+      JOIN users u ON ja.user_id = u.id
+      WHERE j.production_house_id = ?
+      ORDER BY ja.created_at DESC
+    `;
+
+    const [results] = await db.query(sql, [production_id]);
+
+    if (results.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No job applications found",
+        data: [],
+        count: 0,
+      });
+    }
+
+    // Format applications with age calculation and image URLs
+    const applications = results.map(app => {
+      const age = calculateAge(app.date_of_birth);
+
+      return {
+        application_id: app.application_id,
+        status: app.status,
+        role_specific_info: app.role_specific_info,
+        travel: app.travel,
+        availability: app.availability,
+        applied_on: app.created_at,
+        job: {
+          id: app.job_id,
+          project_type: app.project_type,
+          project_description: app.project_description,
+          role_type: app.role_type,
+          gender: app.gender,
+          age_range: app.age_range,
+        },
+        user: {
+          id: app.user_id,
+          name: app.name,
+          email: app.email,
+          mobile: app.mobile,
+          city: app.city,
+          age: age,
+          image_url: constructImageUrl(req, "user_media", app.user_image),
+        },
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "All job applications fetched successfully",
+      data: applications,
+      count: applications.length,
+    });
+  } catch (error) {
+    console.error("❌ getAllApplicationsByProduction error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Database error while fetching job applications",
+      error: error.message,
+    });
+  }
+};
+
+const getApplicationsByJob = async (req, res) => {
+  try {
+    const job_id = req.params.id; // Job ID from route params
+    const production_id = req.user.id; // From middleware
+
+    // First verify that this job belongs to the authenticated production house
+    const [jobCheck] = await db.query(
+      `SELECT id FROM job WHERE id = ? AND production_house_id = ?`,
+      [job_id, production_id]
+    );
+
+    if (jobCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found or you are not authorized to view applications",
+      });
+    }
+
+    const sql = `
+      SELECT 
+        u.id AS user_id,
+        u.name,
+        u.email,
+        u.mobile,
+        u.city,
+        u.date_of_birth,
+        u.image AS user_image,
+        u.gender,
+        u.current_location,
+        ja.application_id,
+        ja.status,
+        ja.role_specific_info,
+        ja.travel,
+        ja.availability,
+        ja.created_at
+      FROM job_applications ja
+      JOIN users u ON ja.user_id = u.id
+      WHERE ja.production_id = ?
+      ORDER BY ja.created_at DESC
+    `;
+
+    const [results] = await db.query(sql, [job_id]);
+
+    if (results.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No applications found for this job",
+        data: [],
+        count: 0,
+      });
+    }
+
+    // Format applications with age calculation and image URL
+    const applications = results.map(app => {
+      const age = calculateAge(app.date_of_birth);
+
+      return {
+        application_id: app.application_id,
+        status: app.status,
+        role_specific_info: app.role_specific_info,
+        travel: app.travel,
+        availability: app.availability,
+        applied_on: app.created_at,
+        user: {
+          id: app.user_id,
+          name: app.name,
+          email: app.email,
+          mobile: app.mobile,
+          city: app.city,
+          current_location: app.current_location,
+          gender: app.gender,
+          age: age,
+          image_url: constructImageUrl(req, "user_media", app.user_image),
+        },
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Applications fetched successfully",
+      data: applications,
+      count: applications.length,
+    });
+  } catch (error) {
+    console.error("❌ getApplicationsByJob error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Database error while fetching applications",
+      error: error.message,
+    });
+  }
+};
+
+// ===================== EXPORTS =====================
+
 module.exports = {
   registerProductionHouse,
   loginProductionHouse,
@@ -810,6 +1043,9 @@ module.exports = {
   resetProductionHousePassword,
   getProductionHouseProfile,
   updateProductionHouseProfile,
+  getAllApplicationsByProduction,
+  getApplicationsByJob,
+  MyJobPostings,
   addJob,
   editJob,
   deleteJob,

@@ -6,21 +6,41 @@ const fs = require("fs");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// OTP generator
-const generateOTP = () =>
-  Math.floor(100000 + Math.random() * 900000).toString();
+// ===================== UTILITIES =====================
 
-// ===================== REGISTER =====================
+// OTP generator
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+// Helper function to construct image URLs
+const constructImageUrl = (req, folder, filename) => {
+  if (!filename) return null;
+  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+};
+
+// Helper function to delete old files
+const deleteOldFile = (filename, folder = "user_media") => {
+  if (filename) {
+    const filePath = path.join(__dirname, "..", "uploads", folder, filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  }
+};
+
+// ===================== REGISTER USER =====================
 const registerUser = async (req, res) => {
   try {
     const { pan_no, aadhaar_no, name, email, mobile, password } = req.body;
 
+    // Validate required fields
     if (!pan_no || !aadhaar_no || !name || !email || !mobile || !password) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+      return res.status(400).json({ 
+        success: false, 
+        message: "All fields are required" 
+      });
     }
 
+    // Create users table if not exists
     const createUserTable = `
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -34,10 +54,10 @@ const registerUser = async (req, res) => {
         blocked BOOLEAN DEFAULT FALSE,
         otp_code VARCHAR(6) NULL,
         is_verified BOOLEAN DEFAULT 0,
-        pan_no VARCHAR(50) NOT NULL UNIQUE ,
+        pan_no VARCHAR(50) NOT NULL UNIQUE,
         aadhaar_no VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(255) NOT NULL,
-        first_name VARCHAR(255)  NULL,
+        first_name VARCHAR(255) NULL,
         middle_name VARCHAR(255) NULL,
         last_name VARCHAR(255) NULL,
         date_of_birth DATE NULL,
@@ -122,10 +142,10 @@ const registerUser = async (req, res) => {
         skills TEXT NULL,
         image VARCHAR(255) NULL,
         images JSON DEFAULT NULL,
-         headshot_image VARCHAR(255) DEFAULT NULL,
-         full_image VARCHAR(255) DEFAULT NULL,
-         audition_video VARCHAR(255) DEFAULT NULL,
-         portfolio_link VARCHAR(255) DEFAULT NULL,
+        headshot_image VARCHAR(255) DEFAULT NULL,
+        full_image VARCHAR(255) DEFAULT NULL,
+        audition_video VARCHAR(255) DEFAULT NULL,
+        portfolio_link VARCHAR(255) DEFAULT NULL,
         availabilities TEXT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -134,6 +154,7 @@ const registerUser = async (req, res) => {
 
     await db.query(createUserTable);
 
+    // Check if user already exists
     const [existingUsers] = await db.query(
       `SELECT * FROM users WHERE email = ? OR mobile = ?`,
       [email, mobile]
@@ -146,9 +167,11 @@ const registerUser = async (req, res) => {
       });
     }
 
+    // Hash password and generate OTP
     const hashedPassword = await bcrypt.hash(password, 11);
     const otp = generateOTP();
 
+    // Insert new user
     await db.query(
       `INSERT INTO users (pan_no, aadhaar_no, name, email, mobile, password, otp_code) 
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -158,217 +181,18 @@ const registerUser = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "User registered successfully. Please verify OTP.",
-      otp, // remove in production
+      otp, // Remove in production
     });
   } catch (error) {
     console.error("❌ registerUser error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-// ===================== UPDATED PROFILE FUNCTION =====================
-const updateProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const updates = { ...req.body };
-
-    const restricted = [
-      "id",
-      "email",
-      "password",
-      "otp_code",
-      "is_verified",
-      "created_at",
-      "updated_at",
-    ];
-    restricted.forEach((f) => delete updates[f]);
-
-    // 📸 Handle single profile image
-    if (req.files && req.files.image) {
-      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [
-        userId,
-      ]);
-      if (rows.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
-
-      const oldImage = rows[0].image;
-      if (oldImage) {
-        const oldPath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "user_media",
-          oldImage
-        );
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-
-      updates.image = req.files.image[0].filename;
-    }
-
-    // 🎭 Handle headshot image - ADDED THIS
-    if (req.files && req.files.headshot_image) {
-      const [rows] = await db.query(
-        "SELECT headshot_image FROM users WHERE id = ?",
-        [userId]
-      );
-      if (rows.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
-
-      const oldHeadshot = rows[0].headshot_image;
-      if (oldHeadshot) {
-        const oldPath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "user_media",
-          oldHeadshot
-        );
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-
-      updates.headshot_image = req.files.headshot_image[0].filename;
-    }
-
-    // 🧍 Handle full body image - ADDED THIS
-    if (req.files && req.files.full_image) {
-      const [rows] = await db.query(
-        "SELECT full_image FROM users WHERE id = ?",
-        [userId]
-      );
-      if (rows.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
-
-      const oldFullImage = rows[0].full_image;
-      if (oldFullImage) {
-        const oldPath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "user_media",
-          oldFullImage
-        );
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-
-      updates.full_image = req.files.full_image[0].filename;
-    }
-
-    // 📂 Handle multiple images upload (append mode)
-    if (req.files && req.files.images) {
-      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [
-        userId,
-      ]);
-      let currentImages = rows[0].images ? JSON.parse(rows[0].images) : [];
-
-      const newImages = req.files.images.map((file) => file.filename);
-      updates.images = JSON.stringify([...currentImages, ...newImages]);
-    }
-
-    // 🎬 Handle audition video upload
-    if (req.files && req.files.audition_video) {
-      const [rows] = await db.query(
-        "SELECT audition_video FROM users WHERE id = ?",
-        [userId]
-      );
-
-      const oldVideo = rows[0]?.audition_video;
-      if (oldVideo) {
-        const oldPath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          "user_media",
-          oldVideo
-        );
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-
-      updates.audition_video = req.files.audition_video[0].filename;
-    }
-
-    // Handle portfolio link
-    if (updates.portfolio_link) {
-      updates.portfolio_link = updates.portfolio_link.trim();
-    }
-
-    if (!updates || Object.keys(updates).length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No fields to update" });
-    }
-
-    const setClause = Object.keys(updates)
-      .map((f) => `${f} = ?`)
-      .join(", ");
-    const values = Object.values(updates);
-
-    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [
-      ...values,
-      userId,
-    ]);
-
-    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [
-      userId,
-    ]);
-    delete updatedUser[0].password;
-    delete updatedUser[0].otp_code;
-
-    res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      user: updatedUser[0],
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error" 
     });
-  } catch (error) {
-    console.error("❌ updateProfile error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// ===================== FORGOT PASSWORD =====================
-const forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email)
-      return res
-        .status(400)
-        .json({ success: false, message: "Email is required" });
-
-    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [
-      email,
-    ]);
-    if (rows.length === 0)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-
-    const otp = generateOTP();
-    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [
-      otp,
-      email,
-    ]);
-
-    res.status(200).json({
-      success: true,
-      message: "OTP sent to your email (for demo returning in response)",
-      otp, // remove in production
-    });
-  } catch (error) {
-    console.error("❌ forgotPassword error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-// ===================== LOGIN =====================
+// ===================== LOGIN USER =====================
 const loginUser = async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -388,9 +212,10 @@ const loginUser = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
     }
 
     const user = rows[0];
@@ -402,6 +227,7 @@ const loginUser = async (req, res) => {
         message: "Please verify your account first",
       });
     }
+
     if (user.suspended || user.blocked) {
       return res.status(403).json({
         success: false,
@@ -412,9 +238,10 @@ const loginUser = async (req, res) => {
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid credentials" 
+      });
     }
 
     // Generate JWT
@@ -433,15 +260,16 @@ const loginUser = async (req, res) => {
         mobile: user.mobile,
         plan: user.plan,
         is_verified: user.is_verified,
-        image: user.image
-          ? `${req.protocol}://${req.get("host")}/uploads/user_media/${user.image}`
-          : null,
-          updated_at: user.updated_at,
+        image: constructImageUrl(req, "user_media", user.image),
+        updated_at: user.updated_at,
       },
     });
   } catch (error) {
     console.error("❌ loginUser error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error" 
+    });
   }
 };
 
@@ -449,34 +277,129 @@ const loginUser = async (req, res) => {
 const verifyOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    if (!email || !otp)
-      return res
-        .status(400)
-        .json({ success: false, message: "Email and OTP are required" });
+
+    if (!email || !otp) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email and OTP are required" 
+      });
+    }
 
     const [rows] = await db.query(
       `SELECT otp_code FROM users WHERE email = ?`,
       [email]
     );
-    if (rows.length === 0)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
 
-    if (rows[0].otp_code !== otp)
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    if (rows[0].otp_code !== otp) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid OTP" 
+      });
+    }
 
     await db.query(
       `UPDATE users SET is_verified = 1, otp_code = NULL WHERE email = ?`,
       [email]
     );
 
-    res
-      .status(200)
-      .json({ success: true, message: "User verified successfully" });
+    res.status(200).json({ 
+      success: true, 
+      message: "User verified successfully" 
+    });
   } catch (error) {
     console.error("❌ verifyOTP error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error" 
+    });
+  }
+};
+
+// ===================== RESEND OTP =====================
+const resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email is required" 
+      });
+    }
+
+    // Check if user exists
+    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [email]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    // Generate new OTP
+    const otp = generateOTP();
+
+    // Update OTP in database
+    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [otp, email]);
+
+    // In production, you would send OTP via email/SMS here
+    res.status(200).json({
+      success: true,
+      message: "OTP resent successfully",
+      otp, // Remove in production
+    });
+  } catch (error) {
+    console.error("❌ resendOTP error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error" 
+    });
+  }
+};
+
+// ===================== FORGOT PASSWORD =====================
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email is required" 
+      });
+    }
+
+    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [email]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    const otp = generateOTP();
+    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [otp, email]);
+
+    res.status(200).json({
+      success: true,
+      message: "OTP sent to your email (for demo returning in response)",
+      otp, // Remove in production
+    });
+  } catch (error) {
+    console.error("❌ forgotPassword error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error" 
+    });
   }
 };
 
@@ -484,11 +407,13 @@ const verifyOTP = async (req, res) => {
 const resetPassword = async (req, res) => {
   try {
     const { email, newPassword } = req.body;
-    if (!email || !newPassword)
+
+    if (!email || !newPassword) {
       return res.status(400).json({
         success: false,
         message: "Email and new password are required",
       });
+    }
 
     const hashedPassword = await bcrypt.hash(newPassword, 11);
 
@@ -497,17 +422,23 @@ const resetPassword = async (req, res) => {
       [hashedPassword, email]
     );
 
-    if (result.affectedRows === 0)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
 
-    res
-      .status(200)
-      .json({ success: true, message: "Password reset successful" });
+    res.status(200).json({ 
+      success: true, 
+      message: "Password reset successful" 
+    });
   } catch (error) {
     console.error("❌ resetPassword error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error" 
+    });
   }
 };
 
@@ -517,61 +448,48 @@ const getProfile = async (req, res) => {
     const userId = req.user.id;
 
     const [rows] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
+
     if (rows.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Profile not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found",
+      });
     }
 
     const user = rows[0];
     delete user.password;
     delete user.otp_code;
 
-    // ✅ Single profile image URL
+    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media`;
+
+    // Convert image fields to full URLs
     if (user.image) {
-      user.image = `${req.protocol}://${req.get("host")}/uploads/user_media/${
-        user.image
-      }`;
+      user.image = `${baseUrl}/${user.image}`;
     }
 
-    // ✅ Multiple gallery images URLs
+    if (user.headshot_image) {
+      user.headshot_image = `${baseUrl}/${user.headshot_image}`;
+    }
+
+    if (user.full_image) {
+      user.full_image = `${baseUrl}/${user.full_image}`;
+    }
+
+    if (user.audition_video) {
+      user.audition_video = `${baseUrl}/${user.audition_video}`;
+    }
+
+    // Convert images JSON to array of URLs
     if (user.images) {
       try {
         const parsedImages = JSON.parse(user.images);
         if (Array.isArray(parsedImages)) {
-          user.images = parsedImages.map(
-            (img) =>
-              `${req.protocol}://${req.get("host")}/uploads/user_media/${img}`
-          );
+          user.images = parsedImages.map(img => `${baseUrl}/${img}`);
         }
       } catch (err) {
         user.images = [];
       }
     }
-
-    // ✅ Headshot image URL
-    if (user.headshot_image) {
-      user.headshot_image = `${req.protocol}://${req.get(
-        "host"
-      )}/uploads/user_media/${user.headshot_image}`;
-    }
-
-    // ✅ Full body image URL
-    if (user.full_image) {
-      user.full_image = `${req.protocol}://${req.get(
-        "host"
-      )}/uploads/user_media/${user.full_image}`;
-    }
-
-    // ✅ Audition video URL
-    if (user.audition_video) {
-      user.audition_video = `${req.protocol}://${req.get(
-        "host"
-      )}/uploads/user_media/${user.audition_video}`;
-    }
-
-    // ✅ Portfolio link stays as is (text/URL from body)
-    // no need to prefix because it's already a link
 
     res.status(200).json({
       success: true,
@@ -580,64 +498,456 @@ const getProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ getProfile error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-const resendOTP = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email is required" });
-    }
-
-    // Check if user exists
-    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [
-      email,
-    ]);
-
-    if (rows.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-
-    const user = rows[0];
-
-    // Generate new OTP
-    const otp = generateOTP();
-
-    // Update OTP in database
-    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [
-      otp,
-      email,
-    ]);
-
-    // In production, you would send OTP via email/SMS here
-    // For demo purposes, returning OTP in response
-    res.status(200).json({
-      success: true,
-      message: "OTP resent successfully",
-      otp, // remove in production
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error" 
     });
-  } catch (error) {
-    console.error("❌ resendOTP error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
 // ===================== UPDATE PROFILE =====================
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updates = { ...req.body };
 
+    // Remove restricted fields
+    const restricted = [
+      "id", "email", "password", "otp_code", 
+      "is_verified", "created_at", "updated_at"
+    ];
+    restricted.forEach(field => delete updates[field]);
+
+    // Handle single profile image
+    if (req.files && req.files.image) {
+      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [userId]);
+      
+      if (rows.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "User not found" 
+        });
+      }
+
+      deleteOldFile(rows[0].image);
+      updates.image = req.files.image[0].filename;
+    }
+
+    // Handle headshot image
+    if (req.files && req.files.headshot_image) {
+      const [rows] = await db.query("SELECT headshot_image FROM users WHERE id = ?", [userId]);
+      
+      if (rows.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "User not found" 
+        });
+      }
+
+      deleteOldFile(rows[0].headshot_image);
+      updates.headshot_image = req.files.headshot_image[0].filename;
+    }
+
+    // Handle full body image
+    if (req.files && req.files.full_image) {
+      const [rows] = await db.query("SELECT full_image FROM users WHERE id = ?", [userId]);
+      
+      if (rows.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "User not found" 
+        });
+      }
+
+      deleteOldFile(rows[0].full_image);
+      updates.full_image = req.files.full_image[0].filename;
+    }
+
+    // Handle multiple images upload (append mode)
+    if (req.files && req.files.images) {
+      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [userId]);
+      let currentImages = rows[0].images ? JSON.parse(rows[0].images) : [];
+
+      const newImages = req.files.images.map(file => file.filename);
+      updates.images = JSON.stringify([...currentImages, ...newImages]);
+    }
+
+    // Handle audition video upload
+    if (req.files && req.files.audition_video) {
+      const [rows] = await db.query("SELECT audition_video FROM users WHERE id = ?", [userId]);
+
+      deleteOldFile(rows[0]?.audition_video);
+      updates.audition_video = req.files.audition_video[0].filename;
+    }
+
+    // Handle portfolio link
+    if (updates.portfolio_link) {
+      updates.portfolio_link = updates.portfolio_link.trim();
+    }
+
+    if (!updates || Object.keys(updates).length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No fields to update" 
+      });
+    }
+
+    const setClause = Object.keys(updates).map(f => `${f} = ?`).join(", ");
+    const values = Object.values(updates);
+
+    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [...values, userId]);
+
+    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
+    delete updatedUser[0].password;
+    delete updatedUser[0].otp_code;
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser[0],
+    });
+  } catch (error) {
+    console.error("❌ updateProfile error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error" 
+    });
+  }
+};
+
+// ===================== GET USER BY ID =====================
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await db.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    let user = rows[0];
+
+    // Remove sensitive/unnecessary fields
+    const sensitiveFields = [
+      "password", "otp_code", "blocked", "suspended", 
+      "suspended_from", "suspended_to", "is_verified"
+    ];
+    sensitiveFields.forEach(field => delete user[field]);
+
+    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media`;
+
+    // Convert image fields into full URLs
+    if (user.image) {
+      user.image = `${baseUrl}/${user.image}`;
+    }
+
+    if (user.headshot_image) {
+      user.headshot_image = `${baseUrl}/${user.headshot_image}`;
+    }
+
+    if (user.full_image) {
+      user.full_image = `${baseUrl}/${user.full_image}`;
+    }
+
+    if (user.audition_video) {
+      user.audition_video = `${baseUrl}/${user.audition_video}`;
+    }
+
+    // Convert images JSON into array of URLs
+    if (user.images) {
+      try {
+        const parsedImages = JSON.parse(user.images);
+        if (Array.isArray(parsedImages)) {
+          user.images = parsedImages.map(img => `${baseUrl}/${img}`);
+        } else {
+          user.images = [];
+        }
+      } catch (err) {
+        user.images = [];
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.error("❌ getUserById error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// ===================== JOB APPLICATION =====================
+const jobApply = async (req, res) => {
+  try {
+    // Ensure table exists with correct structure
+    const createTableQuery = `
+      CREATE TABLE IF NOT EXISTS job_applications (
+        application_id INT AUTO_INCREMENT PRIMARY KEY,
+        status BOOLEAN NOT NULL DEFAULT FALSE,
+        role_specific_info TEXT,
+        production_id INT NOT NULL,
+        user_id INT NOT NULL,
+        travel BOOLEAN NOT NULL DEFAULT FALSE,
+        availability BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_user_job (user_id, production_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (production_id) REFERENCES job(id) ON DELETE CASCADE
+      );
+    `;
+    await db.query(createTableQuery);
+
+    const {
+      status = false,
+      role_specific_info,
+      job_id,
+      travel = false,
+      availability = false,
+    } = req.body;
+
+    // Validate required fields
+    if (!job_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Job ID is required",
+      });
+    }
+
+    const user_id = req.user.id;
+
+    // Verify the job exists and is active
+    const [jobCheck] = await db.query(`
+      SELECT id, production_house_id, project_type, application_deadline 
+      FROM job 
+      WHERE id = ?
+    `, [job_id]);
+
+    if (jobCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found",
+      });
+    }
+
+    const job = jobCheck[0];
+
+    // Check if application deadline has passed
+    if (job.application_deadline && new Date(job.application_deadline) < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Application deadline has passed",
+      });
+    }
+
+    // Check if user already applied for this job
+    const [existing] = await db.query(`
+      SELECT application_id 
+      FROM job_applications 
+      WHERE user_id = ? AND production_id = ?
+    `, [user_id, job_id]);
+
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "You have already applied for this job",
+        error: "DUPLICATE_APPLICATION",
+      });
+    }
+
+    // Insert new application
+    const [result] = await db.query(`
+      INSERT INTO job_applications 
+      (status, role_specific_info, production_id, user_id, travel, availability) 
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [status, role_specific_info, job_id, user_id, travel, availability]);
+
+    // Get the complete application data for response
+    const [applicationData] = await db.query(`
+      SELECT 
+        ja.*,
+        j.project_type,
+        j.role_type,
+        j.production_house_name
+      FROM job_applications ja
+      JOIN job j ON ja.production_id = j.id
+      WHERE ja.application_id = ?
+    `, [result.insertId]);
+
+    return res.status(201).json({
+      success: true,
+      message: "Job application submitted successfully",
+      data: {
+        application_id: result.insertId,
+        user_id,
+        job_id,
+        status,
+        travel,
+        availability,
+        role_specific_info,
+        job_info: {
+          project_type: applicationData[0].project_type,
+          role_type: applicationData[0].role_type,
+          production_house: applicationData[0].production_house_name,
+        },
+        applied_at: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error in jobApply controller:", error);
+
+    // Handle specific MySQL errors
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({
+        success: false,
+        message: "You have already applied for this job",
+        error: "DUPLICATE_APPLICATION",
+      });
+    }
+
+    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid job ID or user ID",
+        error: "FOREIGN_KEY_CONSTRAINT",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to submit job application",
+      error: error.message,
+    });
+  }
+};
+
+// ===================== GET MY APPLICATIONS =====================
+const getMyApplications = async (req, res) => {
+  try {
+    const user_id = req.user.id;
+
+    const sql = `
+      SELECT 
+        ja.application_id,
+        ja.status,
+        ja.role_specific_info,
+        ja.travel,
+        ja.availability,
+        ja.created_at,
+        j.id as job_id,
+        j.project_type,
+        j.project_description,
+        j.role_type,
+        j.gender,
+        j.age_range,
+        j.city_location,
+        j.compensation,
+        j.production_house_name,
+        j.image as job_image
+      FROM job_applications ja
+      JOIN job j ON ja.production_id = j.id
+      WHERE ja.user_id = ?
+      ORDER BY ja.created_at DESC
+    `;
+
+    const [results] = await db.query(sql, [user_id]);
+
+    const applications = results.map(app => ({
+      application_id: app.application_id,
+      status: app.status ? 'Approved' : 'Pending',
+      role_specific_info: app.role_specific_info,
+      travel: app.travel,
+      availability: app.availability,
+      applied_on: app.created_at,
+      job: {
+        id: app.job_id,
+        project_type: app.project_type,
+        project_description: app.project_description,
+        role_type: app.role_type,
+        gender: app.gender,
+        age_range: app.age_range,
+        city_location: app.city_location,
+        compensation: app.compensation,
+        production_house_name: app.production_house_name,
+        image_url: constructImageUrl(req, "jobs", app.job_image),
+      },
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Applications fetched successfully",
+      data: applications,
+      count: applications.length,
+    });
+  } catch (error) {
+    console.error("❌ getMyApplications error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// ===================== CANCEL APPLICATION =====================
+const cancelApplication = async (req, res) => {
+  try {
+    const { application_id } = req.params;
+    const user_id = req.user.id;
+
+    // Verify application belongs to user
+    const [check] = await db.query(`
+      SELECT application_id 
+      FROM job_applications 
+      WHERE application_id = ? AND user_id = ?
+    `, [application_id, user_id]);
+
+    if (check.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Application not found or unauthorized",
+      });
+    }
+
+    await db.query(`
+      DELETE FROM job_applications 
+      WHERE application_id = ? AND user_id = ?
+    `, [application_id, user_id]);
+
+    res.status(200).json({
+      success: true,
+      message: "Application cancelled successfully",
+    });
+  } catch (error) {
+    console.error("❌ cancelApplication error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// ===================== EXPORTS =====================
 module.exports = {
   registerUser,
   loginUser,
   verifyOTP,
+  resendOTP,
   forgotPassword,
+  resetPassword,
   getProfile,
   updateProfile,
-  resetPassword,
-  resendOTP,
+  getUserById,
+  jobApply,
+  getMyApplications,
+  cancelApplication,
 };

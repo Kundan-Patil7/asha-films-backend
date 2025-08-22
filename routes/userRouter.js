@@ -8,7 +8,9 @@ const {
   updateProfile,
   forgotPassword,
   resetPassword,
-  resendOTP
+  resendOTP,
+  jobApply,
+  getUserById
 } = require("../controllers/userController");
 const authMiddleware = require("../middleware/user");
 const combinedUpload = require("../middleware/userprofile")
@@ -34,6 +36,15 @@ router.put(
   ]),
   updateProfile
 );
+
+router.get("/profile/:id", getUserById);
+
+
+// jobs 
+
+
+router.post("/job-apply", authMiddleware, jobApply);
+
 
 
 
