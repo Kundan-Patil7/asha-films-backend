@@ -18,7 +18,7 @@ const productionAuth = (req, res, next) => {
         return res.status(401).json({ error: "Unauthorized: Invalid token" });
       }
 
-      req.user = decoded; // Save user data in request
+      req.user = decoded;
       next();
     });
   } catch (error) {

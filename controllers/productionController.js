@@ -192,7 +192,7 @@ const loginProductionHouse = async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ id: prod.id, email: prod.email }, JWT_SECRET, {
+    const token = jwt.sign({ id: prod.id, email: prod.email, company_name: prod.company_name }, JWT_SECRET, {
       expiresIn: "8h",
     });
 
