@@ -548,6 +548,7 @@ const initJobTable = async () => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS job (
       id INT AUTO_INCREMENT PRIMARY KEY,
+      status boolean DEFAULT false,
       project_type VARCHAR(100) NOT NULL,
       project_description TEXT NOT NULL,
       language_required VARCHAR(100) NOT NULL,
