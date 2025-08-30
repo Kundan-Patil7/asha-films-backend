@@ -744,7 +744,7 @@ const getAllJobs = async (req, res) => {
     // Format the results with image URLs
     const formattedJobs = jobs.map((job) => ({
       ...job,
-      image: constructImageUrl(req, "jobs", job.image),
+      image: constructImageUrl(req, "jobCovers", job.image),
     }));
 
     res.status(200).json({
