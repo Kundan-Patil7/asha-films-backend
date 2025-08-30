@@ -92,4 +92,10 @@ router.get("/jobs/:id", getJobById);
 router.delete("/jobs/:id", productionAuth, deleteJob);
 
 
+
+
+
+
+
+
 module.exports = router;

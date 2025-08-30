@@ -13,7 +13,8 @@ const {
   getUserById
 } = require("../controllers/userController");
 const authMiddleware = require("../middleware/user");
-const combinedUpload = require("../middleware/userprofile")
+const combinedUpload = require("../middleware/userprofile");
+const { getPopCstingCall } = require("../controllers/productionController");
 const router = express.Router();
 
 router.post("/register", registerUser);
@@ -46,6 +47,7 @@ router.get("/profile/:id", getUserById);
 router.post("/job-apply", authMiddleware, jobApply);
 
 
+router.get("/popular-casting-calls", getPopCstingCall);
 
 
 module.exports = router;

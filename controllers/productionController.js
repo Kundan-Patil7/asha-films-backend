@@ -1038,6 +1038,41 @@ const getApplicationsByJob = async (req, res) => {
   }
 };
 
+
+
+
+// ✅ Get all popular casting calls which are not expired
+const getPopCstingCall = async (req, res) => {
+  try {
+    const [jobs] = await db.query(`
+      SELECT j.id, j.status, j.project_type, j.project_description, j.image, 
+             j.application_deadline, j.city_location, j.created_at
+      FROM job j
+      WHERE j.application_deadline IS NULL OR j.application_deadline >= NOW()
+      ORDER BY j.created_at DESC
+    `);
+
+    // Format the results with image URLs
+    const formattedJobs = jobs.map((job) => ({
+      ...job,
+      image: constructImageUrl(req, "jobCovers", job.image),
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: formattedJobs.length,
+      jobs: formattedJobs,
+    });
+  } catch (error) {
+    console.error("❌ getPopCstingCall error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 //  Previous Job post  && Upcoming Projects
 
 // ===================== Previous Job Posts =====================
@@ -1131,4 +1166,5 @@ module.exports = {
   resendProductionHouseOTP,
   getPreviousJobs,
   getUpcomingProjects,
+  getPopCstingCall,
 };
