@@ -9,7 +9,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // ===================== UTILITIES =====================
 
 // OTP generator
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const generateOTP = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
 
 // Helper function to construct file URLs
 const getFileUrl = (req, folder, filename) => {
@@ -47,7 +48,7 @@ const registerProductionHouse = async (req, res) => {
   try {
     const requiredFields = [
       "gst_no",
-      "pan_no", 
+      "pan_no",
       "aadhaar_no",
       "company_name",
       "type_of_work",
@@ -57,7 +58,7 @@ const registerProductionHouse = async (req, res) => {
     ];
 
     // Validate required fields
-    const missingFields = requiredFields.filter(field => !req.body[field]);
+    const missingFields = requiredFields.filter((field) => !req.body[field]);
     if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
@@ -192,9 +193,13 @@ const loginProductionHouse = async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ id: prod.id, email: prod.email, company_name: prod.company_name }, JWT_SECRET, {
-      expiresIn: "8h",
-    });
+    const token = jwt.sign(
+      { id: prod.id, email: prod.email, company_name: prod.company_name },
+      JWT_SECRET,
+      {
+        expiresIn: "8h",
+      }
+    );
 
     res.status(200).json({
       success: true,
@@ -307,10 +312,10 @@ const resendProductionHouseOTP = async (req, res) => {
     const otp = generateOTP();
 
     // Save new OTP
-    await db.query(
-      `UPDATE production_house SET otp_code = ? WHERE email = ?`,
-      [otp, email]
-    );
+    await db.query(`UPDATE production_house SET otp_code = ? WHERE email = ?`, [
+      otp,
+      email,
+    ]);
 
     res.status(200).json({
       success: true,
@@ -364,10 +369,10 @@ const forgotProductionHousePassword = async (req, res) => {
 
     const otp = generateOTP();
 
-    await db.query(
-      `UPDATE production_house SET otp_code = ? WHERE email = ?`,
-      [otp, email]
-    );
+    await db.query(`UPDATE production_house SET otp_code = ? WHERE email = ?`, [
+      otp,
+      email,
+    ]);
 
     res.status(200).json({
       success: true,
@@ -477,7 +482,7 @@ const updateProductionHouseProfile = async (req, res) => {
       "created_at",
       "updated_at",
     ];
-    restricted.forEach(field => delete updates[field]);
+    restricted.forEach((field) => delete updates[field]);
 
     // Handle image upload
     if (req.file) {
@@ -579,7 +584,7 @@ const addJob = async (req, res) => {
 
     const requiredFields = [
       "project_type",
-      "project_description", 
+      "project_description",
       "language_required",
       "phone_number",
       "email",
@@ -587,7 +592,7 @@ const addJob = async (req, res) => {
     ];
 
     // Validate required fields
-    const missingFields = requiredFields.filter(field => !req.body[field]);
+    const missingFields = requiredFields.filter((field) => !req.body[field]);
     if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
@@ -661,12 +666,12 @@ const editJob = async (req, res) => {
     // Remove restricted fields
     const restricted = [
       "id",
-      "production_house_id", 
+      "production_house_id",
       "production_house_name",
       "created_at",
       "updated_at",
     ];
-    restricted.forEach(field => delete updates[field]);
+    restricted.forEach((field) => delete updates[field]);
 
     await db.query(`UPDATE job SET ? WHERE id = ?`, [updates, id]);
 
@@ -736,7 +741,7 @@ const getAllJobs = async (req, res) => {
     `);
 
     // Format the results with image URLs
-    const formattedJobs = jobs.map(job => ({
+    const formattedJobs = jobs.map((job) => ({
       ...job,
       image: constructImageUrl(req, "jobs", job.image),
     }));
@@ -760,10 +765,7 @@ const getJobById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [jobs] = await db.query(
-      `SELECT j.* FROM job j WHERE j.id = ?`,
-      [id]
-    );
+    const [jobs] = await db.query(`SELECT j.* FROM job j WHERE j.id = ?`, [id]);
 
     if (!jobs.length) {
       return res.status(404).json({
@@ -820,15 +822,17 @@ const MyJobPostings = async (req, res) => {
     }
 
     // Format jobs with image URLs and additional info
-    const jobs = results.map(job => {
+    const jobs = results.map((job) => {
       return {
         ...job,
         image_url: constructImageUrl(req, "jobCovers", job.image),
         application_count: parseInt(job.application_count) || 0,
         // Add status based on application deadline
-        status: job.application_deadline && new Date(job.application_deadline) < new Date() 
-          ? 'expired' 
-          : 'active'
+        status:
+          job.application_deadline &&
+          new Date(job.application_deadline) < new Date()
+            ? "expired"
+            : "active",
       };
     });
 
@@ -894,7 +898,7 @@ const getAllApplicationsByProduction = async (req, res) => {
     }
 
     // Format applications with age calculation and image URLs
-    const applications = results.map(app => {
+    const applications = results.map((app) => {
       const age = calculateAge(app.date_of_birth);
 
       return {
@@ -993,7 +997,7 @@ const getApplicationsByJob = async (req, res) => {
     }
 
     // Format applications with age calculation and image URL
-    const applications = results.map(app => {
+    const applications = results.map((app) => {
       const age = calculateAge(app.date_of_birth);
 
       return {
@@ -1033,6 +1037,78 @@ const getApplicationsByJob = async (req, res) => {
   }
 };
 
+//  Previous Job post  && Upcoming Projects
+
+// ===================== Previous Job Posts =====================
+const getPreviousJobs = async (req, res) => {
+  try {
+    console.log("Decoded User:", req.user);
+    console.log("Decoded User:", req.user.id);
+    const id = req.user.id;
+    const [rows] = await db.query(
+      `SELECT * FROM job 
+       WHERE production_house_id = ? 
+       AND application_deadline IS NOT NULL 
+       AND application_deadline < NOW()
+       ORDER BY application_deadline DESC`,
+      [id]
+    );
+
+    // Construct image URLs
+    const jobs = rows.map((job) => ({
+      ...job,
+      image: constructImageUrl(req, "jobCovers", job.image),
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: jobs.length,
+      data: jobs,
+    });
+  } catch (error) {
+    console.error("❌ getPreviousJobs error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// ===================== Upcoming Projects =====================
+const getUpcomingProjects = async (req, res) => {
+  try {
+
+    const id = req.user.id;
+    const [rows] = await db.query(
+      `SELECT * FROM job 
+       WHERE production_house_id = ? 
+       AND (application_deadline IS NULL OR application_deadline >= NOW())
+       ORDER BY application_deadline ASC`,
+      [id]
+    );
+
+    // Construct image URLs
+    const jobs = rows.map((job) => ({
+      ...job,
+      image: constructImageUrl(req, "jobCovers", job.image),
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: jobs.length,
+      data: jobs,
+    });
+  } catch (error) {
+    console.error("❌ getUpcomingProjects error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // ===================== EXPORTS =====================
 
 module.exports = {
@@ -1052,4 +1128,6 @@ module.exports = {
   getAllJobs,
   getJobById,
   resendProductionHouseOTP,
+  getPreviousJobs,
+  getUpcomingProjects,
 };
