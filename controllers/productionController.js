@@ -1045,12 +1045,14 @@ const getApplicationsByJob = async (req, res) => {
 const getPopCstingCall = async (req, res) => {
   try {
     const [jobs] = await db.query(`
-      SELECT j.id, j.status, j.project_type, j.project_description, j.image, 
-             j.application_deadline, j.city_location, j.created_at
-      FROM job j
-      WHERE j.application_deadline IS NULL OR j.application_deadline >= NOW()
-      ORDER BY j.created_at DESC
-    `);
+  SELECT j.id, j.status, j.project_type, j.project_description, j.image, 
+         j.application_deadline, j.city_location, j.created_at
+  FROM job j
+  WHERE j.status = TRUE
+    AND (j.application_deadline IS NULL OR j.application_deadline >= NOW())
+  ORDER BY j.created_at DESC
+`);
+
 
     // Format the results with image URLs
     const formattedJobs = jobs.map((job) => ({

@@ -46,7 +46,7 @@ router.get("/profile/:id", getUserById);
 
 router.post("/job-apply", authMiddleware, jobApply);
 
-
+// the controller is in  production controller  
 router.get("/popular-casting-calls", getPopCstingCall);
 
 
