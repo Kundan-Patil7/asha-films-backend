@@ -6,7 +6,7 @@ const fs = require("fs");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// ===================== UTILITIES =====================
+// ===================== UTILITIES ====================
 
 // OTP generator
 const generateOTP = () =>
@@ -28,7 +28,7 @@ const deleteOldFile = (filename, folder = "user_media") => {
   }
 };
 
-// ===================== REGISTER USER =====================
+// ===================== REGISTER USER =================
 const registerUser = async (req, res) => {
   try {
     const { pan_no, aadhaar_no, name, email, mobile, password } = req.body;
@@ -151,24 +151,43 @@ const registerUser = async (req, res) => {
 
 
 -- the below fields will get change when thir plans will ger updated 
-    // plan_id BIGINT,
-    // plan_name VARCHAR(55) DEFAULT 'free',
-    // plan_expiry DATE,
-    // plan_purchase_date  date  
-    // -- Social Links
-   
-    // showcase_facebook_link VARCHAR(255),
-    // showcase_youtube_link VARCHAR(255),
-
-    // -- Tracking usage (not limits, limits come from plan)
-    // uploaded_pics_count INT DEFAULT 0,
-    // uploaded_intro_videos_count INT DEFAULT 0,
-    // uploaded_audition_videos_count INT DEFAULT 0,
-    // uploaded_work_links_count INT DEFAULT 0,
-
-    // reward_points INT DEFAULT 0,
-    // testimonial_video_submitted BOOLEAN DEFAULT FALSE,
+ -- Basic plan information
+  plan_id BIGINT DEFAULT NULL,
+  plan_name VARCHAR(55) DEFAULT 'free',
+  plan_expiry DATE DEFAULT NULL,
+  plan_purchase_date DATE DEFAULT NULL,
+  plan_auto_renew BOOLEAN DEFAULT FALSE,
+  plan_price DECIMAL(10,2) DEFAULT 0.00,
   
+  -- Features (copied from plan at time of purchase)
+  verified_actor_badge BOOLEAN DEFAULT FALSE,
+  consolidated_profile BOOLEAN DEFAULT FALSE,
+  free_learning_videos BOOLEAN DEFAULT FALSE,
+  unlimited_applications BOOLEAN DEFAULT FALSE,
+  
+  -- Notifications
+  email_alerts BOOLEAN DEFAULT FALSE,
+  whatsapp_alerts BOOLEAN DEFAULT FALSE,
+  
+  -- Limits
+  max_pics_upload INT DEFAULT 0,
+  max_intro_videos INT DEFAULT 0,
+  max_audition_videos INT DEFAULT 0,
+  max_work_links INT DEFAULT 0,
+  
+  -- Additional benefits
+  masterclass_access BOOLEAN DEFAULT FALSE,
+  showcase_featured BOOLEAN DEFAULT FALSE,
+  reward_points_on_testimonial INT DEFAULT 0,
+  
+  -- Plan usage tracking
+  uploaded_pics_count INT DEFAULT 0,
+  uploaded_intro_videos_count INT DEFAULT 0,
+  uploaded_audition_videos_count INT DEFAULT 0,
+  uploaded_work_links_count INT DEFAULT 0,
+
+  showcase_facebook_link VARCHAR(255),
+  showcase_youtube_link VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );
@@ -1021,6 +1040,280 @@ const cancelApplication = async (req, res) => {
   }
 };
 
+
+const ensureUserPlanHistoryTable = async () => {
+  try {
+   const query = `
+  CREATE TABLE IF NOT EXISTS user_plan_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    plan_id BIGINT NOT NULL,
+    plan_name VARCHAR(50) NOT NULL,
+    purchase_date DATE NOT NULL,
+    expiry_date DATE NOT NULL,
+    amount_paid DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(50),
+    transaction_id VARCHAR(255),
+    auto_renew BOOLEAN DEFAULT FALSE,
+
+    -- Store all plan features at time of purchase
+    verified_actor_badge BOOLEAN DEFAULT FALSE,
+    consolidated_profile BOOLEAN DEFAULT FALSE,
+    free_learning_videos BOOLEAN DEFAULT FALSE,
+    unlimited_applications BOOLEAN DEFAULT FALSE,
+    email_alerts BOOLEAN DEFAULT FALSE,
+    whatsapp_alerts BOOLEAN DEFAULT FALSE,
+    max_pics_upload INT DEFAULT 0,
+    max_intro_videos INT DEFAULT 0,
+    max_audition_videos INT DEFAULT 0,
+    max_work_links INT DEFAULT 0,
+    masterclass_access BOOLEAN DEFAULT FALSE,
+    showcase_featured BOOLEAN DEFAULT FALSE,
+    reward_points_on_testimonial INT DEFAULT 0,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`;
+
+
+    await db.query(query);
+    console.log("✅ user_plan_history table ensured!");
+  } catch (err) {
+    console.error("❌ Error ensuring user_plan_history table:", err);
+  }
+};
+const updateUserPlan = async (req, res) => {
+  try {
+
+    await ensureUserPlanHistoryTable();
+    // Get user ID from middleware (assuming it's attached to req.user)
+    const userId = req.user.id;
+    
+    // Get plan details from request body
+    const { plan_id, auto_renew = false, payment_method, transaction_id } = req.body;
+
+    // Validate required fields
+    if (!plan_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Plan ID is required",
+      });
+    }
+
+    // Check if the plan exists
+   const [plan] = await db.query("SELECT * FROM plans WHERE id = ?", [plan_id]);
+
+    
+    if (plan.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Plan not found or inactive",
+      });
+    }
+
+    const selectedPlan = plan[0];
+    
+    // Calculate plan expiry date
+    const purchaseDate = new Date();
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + selectedPlan.duration_in_days);
+
+    // Format dates for MySQL
+    const formattedPurchaseDate = purchaseDate.toISOString().split('T')[0];
+    const formattedExpiryDate = expiryDate.toISOString().split('T')[0];
+
+    // Start transaction
+    await db.query("START TRANSACTION");
+
+    try {
+      // Update user's current plan with all features
+      const updateQuery = `
+        UPDATE users 
+        SET 
+          plan_id = ?, 
+          plan_name = ?, 
+           plan = ?,
+          plan_price = ?,
+          plan_purchase_date = ?, 
+          plan_expiry = ?, 
+          plan_auto_renew = ?,
+          verified_actor_badge = ?,
+          consolidated_profile = ?,
+          free_learning_videos = ?,
+          unlimited_applications = ?,
+          email_alerts = ?,
+          whatsapp_alerts = ?,
+          max_pics_upload = ?,
+          max_intro_videos = ?,
+          max_audition_videos = ?,
+          max_work_links = ?,
+          masterclass_access = ?,
+          showcase_featured = ?,
+          reward_points_on_testimonial = ?,
+          uploaded_pics_count = 0,  -- Reset counters on plan change
+          uploaded_intro_videos_count = 0,
+          uploaded_audition_videos_count = 0,
+          uploaded_work_links_count = 0
+        WHERE id = ?
+      `;
+      
+      await db.query(updateQuery, [
+        selectedPlan.id, 
+        selectedPlan.name, 
+        selectedPlan.name,
+        selectedPlan.price,
+        formattedPurchaseDate, 
+        formattedExpiryDate, 
+        auto_renew,
+        selectedPlan.verified_actor_badge,
+        selectedPlan.consolidated_profile,
+        selectedPlan.free_learning_videos,
+        selectedPlan.unlimited_applications,
+        selectedPlan.email_alerts,
+        selectedPlan.whatsapp_alerts,
+        selectedPlan.max_pics_upload,
+        selectedPlan.max_intro_videos,
+        selectedPlan.max_audition_videos,
+        selectedPlan.max_work_links,
+        selectedPlan.masterclass_access,
+        selectedPlan.showcase_featured,
+        selectedPlan.reward_points_on_testimonial,
+        userId
+      ]);
+
+      // Record in plan history with all features
+      const historyQuery = `
+        INSERT INTO user_plan_history 
+        (user_id, plan_id, plan_name, purchase_date, expiry_date, amount_paid, 
+         payment_method, transaction_id, auto_renew,
+         verified_actor_badge, consolidated_profile, free_learning_videos,
+         unlimited_applications, email_alerts, whatsapp_alerts,
+         max_pics_upload, max_intro_videos, max_audition_videos, max_work_links, 
+         masterclass_access, showcase_featured, reward_points_on_testimonial)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      await db.query(historyQuery, [
+        userId, 
+        selectedPlan.id, 
+        selectedPlan.name,
+        formattedPurchaseDate, 
+        formattedExpiryDate, 
+        selectedPlan.price,
+        payment_method, 
+        transaction_id, 
+        auto_renew,
+        selectedPlan.verified_actor_badge,
+        selectedPlan.consolidated_profile,
+        selectedPlan.free_learning_videos,
+        selectedPlan.unlimited_applications,
+        selectedPlan.email_alerts,
+        selectedPlan.whatsapp_alerts,
+        selectedPlan.max_pics_upload,
+        selectedPlan.max_intro_videos,
+        selectedPlan.max_audition_videos,
+        selectedPlan.max_work_links,
+        selectedPlan.masterclass_access,
+        selectedPlan.showcase_featured,
+        selectedPlan.reward_points_on_testimonial
+      ]);
+
+      // Commit transaction
+      await db.query("COMMIT");
+
+      res.status(200).json({
+        success: true,
+        message: "Plan updated successfully",
+        data: {
+          plan: selectedPlan.name,
+          purchase_date: formattedPurchaseDate,
+          expiry_date: formattedExpiryDate,
+          auto_renew: auto_renew
+        }
+      });
+    } catch (error) {
+      // Rollback transaction on error
+      await db.query("ROLLBACK");
+      throw error;
+    }
+  } catch (error) {
+    console.error("❌ updateUserPlan error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating plan",
+    });
+  }
+};
+
+// Get user's current plan details
+const getUserPlan = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const [user] = await db.query(
+      `SELECT 
+        plan_id, plan_name, plan_price, plan_purchase_date, plan_expiry, plan_auto_renew,
+        verified_actor_badge, consolidated_profile, free_learning_videos,
+        unlimited_applications, email_alerts, whatsapp_alerts,
+        max_pics_upload, max_intro_videos, max_audition_videos, max_work_links, 
+        masterclass_access, showcase_featured, reward_points_on_testimonial, 
+        uploaded_pics_count, uploaded_intro_videos_count,
+        uploaded_audition_videos_count, uploaded_work_links_count
+       FROM users 
+       WHERE id = ?`,
+      [userId]
+    );
+    
+    if (user.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user[0]
+    });
+  } catch (error) {
+    console.error("❌ getUserPlan error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching plan details",
+    });
+  }
+};
+
+// Get user's plan history
+const getUserPlanHistory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const [history] = await db.query(
+      `SELECT *
+       FROM user_plan_history
+       WHERE user_id = ?
+       ORDER BY purchase_date DESC`,
+      [userId]
+    );
+    
+    res.status(200).json({
+      success: true,
+      data: history
+    });
+  } catch (error) {
+    console.error("❌ getUserPlanHistory error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching plan history",
+    });
+  }
+};
+
+
+
+
+
 // ===================== EXPORTS =====================
 module.exports = {
   registerUser,
@@ -1035,4 +1328,7 @@ module.exports = {
   jobApply,
   getMyApplications,
   cancelApplication,
+  updateUserPlan,
+  getUserPlan,
+  getUserPlanHistory
 };

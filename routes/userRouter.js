@@ -10,7 +10,10 @@ const {
   resetPassword,
   resendOTP,
   jobApply,
-  getUserById
+  getUserById,
+  updateUserPlan,
+  getUserPlan,
+  getUserPlanHistory
 } = require("../controllers/userController");
 const authMiddleware = require("../middleware/user");
 const combinedUpload = require("../middleware/userprofile");
@@ -49,5 +52,17 @@ router.post("/job-apply", authMiddleware, jobApply);
 // the controller is in  production controller  
 router.get("/popular-casting-calls", getPopCstingCall);
 
+
+
+
+//  user plan 
+
+router.post("/plan/update", authMiddleware, updateUserPlan);
+
+// Get current user plan details
+router.get("/plan/current", authMiddleware, getUserPlan);
+
+// Get plan history for user
+router.get("/plan/history", authMiddleware, getUserPlanHistory);
 
 module.exports = router;
