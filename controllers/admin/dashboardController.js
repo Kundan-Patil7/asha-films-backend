@@ -201,39 +201,21 @@ const createTicket = async (req, res) => {
 
 const approveJob = async (req, res) => {
   try {
-    const { jobId } = req.body; // ✅ jobId comes from body
+    const { jobId, status } = req.body; // status = 1 (approve), 2 (discard)
 
-    if (!jobId) {
-      return res.status(400).json({
-        success: false,
-        message: "Job ID is required",
-      });
+    if (![1, 2].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status value" });
     }
 
-    const [result] = await db.query(
-      "UPDATE job SET status = TRUE WHERE id = ?",
-      [jobId]
-    );
+    await db.query(`UPDATE job SET status = ? WHERE id = ?`, [status, jobId]);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-    }
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: "Job approved successfully",
-      jobId,
+      message: `Job ${status === 1 ? "Approved" : "Discarded"} successfully`,
     });
   } catch (error) {
-    console.error("Error approving job:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    console.error("❌ updateJobStatus error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
