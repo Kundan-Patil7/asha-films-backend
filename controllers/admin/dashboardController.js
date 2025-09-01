@@ -200,42 +200,76 @@ const createTicket = async (req, res) => {
 };
 
 const approveJob = async (req, res) => {
+   try {
+    const { jobId, status } = req.body; 
+ 
+    if (![1, 2].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid status value" });
+    }
+ 
+    await db.query(`UPDATE job SET status = ? WHERE id = ?`, [status, jobId]);
+ 
+    res.status(200).json({
+      success: true,
+      message: `Job ${status === 1 ? "Approved" : "Discarded"} successfully`,
+    });
+  } catch (error) {
+    console.error("❌ updateJobStatus error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+};
+
+
+const getAllTransactions = async (req, res) => {
   try {
-    const { jobId } = req.body; // ✅ jobId comes from body
-
-    if (!jobId) {
-      return res.status(400).json({
-        success: false,
-        message: "Job ID is required",
-      });
-    }
-
-    const [result] = await db.query(
-      "UPDATE job SET status = TRUE WHERE id = ?",
-      [jobId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Job not found",
-      });
-    }
+    const [rows] = await db.query(`
+      SELECT 
+        uph.id,
+        u.id AS user_id,
+        u.name AS user_name,
+        u.email AS user_email,
+        uph.plan_id,
+        uph.plan_name,
+        uph.purchase_date,
+        uph.expiry_date,
+        uph.amount_paid,
+        uph.payment_method,
+        uph.transaction_id,
+        uph.auto_renew,
+        uph.verified_actor_badge,
+        uph.consolidated_profile,
+        uph.free_learning_videos,
+        uph.unlimited_applications,
+        uph.email_alerts,
+        uph.whatsapp_alerts,
+        uph.max_pics_upload,
+        uph.max_intro_videos,
+        uph.max_audition_videos,
+        uph.max_work_links,
+        uph.masterclass_access,
+        uph.showcase_featured,
+        uph.reward_points_on_testimonial,
+        uph.created_at
+      FROM user_plan_history uph
+      JOIN users u ON uph.user_id = u.id
+      ORDER BY uph.created_at DESC
+    `);
 
     return res.status(200).json({
       success: true,
-      message: "Job approved successfully",
-      jobId,
+      message: "All transaction history fetched successfully",
+      transactions: rows,
     });
   } catch (error) {
-    console.error("Error approving job:", error);
+    console.error("Error fetching transactions:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Error fetching transaction history",
       error: error.message,
     });
   }
 };
+
 
 
 module.exports = {
@@ -246,6 +280,7 @@ module.exports = {
   unsuspendUser,
   changePlan,
   createTicket,
-  approveJob
+  approveJob,
+  getAllTransactions
 
 };

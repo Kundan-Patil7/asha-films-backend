@@ -548,7 +548,7 @@ const initJobTable = async () => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS job (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      status boolean DEFAULT false,
+      status TINYINT  DEFAULT 0,
       project_type VARCHAR(100) NOT NULL,
       project_description TEXT NOT NULL,
       language_required VARCHAR(100) NOT NULL,
@@ -1048,7 +1048,7 @@ const getPopCstingCall = async (req, res) => {
   SELECT j.id, j.status, j.project_type, j.project_description, j.image, 
          j.application_deadline, j.city_location, j.created_at
   FROM job j
-  WHERE j.status = TRUE
+  WHERE j.status = 1
     AND (j.application_deadline IS NULL OR j.application_deadline >= NOW())
   ORDER BY j.created_at DESC
 `);
@@ -1075,7 +1075,6 @@ const getPopCstingCall = async (req, res) => {
   }
 };
 
-//  Previous Job post  && Upcoming Projects
 
 // ===================== Previous Job Posts =====================
 const getPreviousJobs = async (req, res) => {
@@ -1147,6 +1146,42 @@ const getUpcomingProjects = async (req, res) => {
   }
 };
 
+
+
+const getRejectedJobs = async (req, res) => {
+ try {
+
+    const id = req.user.id;
+    const [rows] = await db.query(
+      `SELECT * FROM job 
+       WHERE production_house_id = ? 
+       AND status = 2
+       AND (application_deadline IS NULL OR application_deadline >= NOW())
+       ORDER BY application_deadline ASC`,
+      [id]
+    );
+
+    // Construct image URLs
+    const jobs = rows.map((job) => ({
+      ...job,
+      image: constructImageUrl(req, "jobCovers", job.image),
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: jobs.length,
+      data: jobs,
+    });
+  } catch (error) {
+    console.error("❌ getUpcomingProjects error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // ===================== EXPORTS =====================
 
 module.exports = {
@@ -1169,4 +1204,5 @@ module.exports = {
   getPreviousJobs,
   getUpcomingProjects,
   getPopCstingCall,
+  getRejectedJobs
 };

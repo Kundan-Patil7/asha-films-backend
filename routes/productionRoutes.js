@@ -21,6 +21,7 @@ const {
   MyJobPostings,
   getPreviousJobs,
   getUpcomingProjects,
+  getRejectedJobs,
 } = require("../controllers/productionController");
 const productionProfileImage = require("../middleware/productionProfileImg");
 const productionAuth = require("../middleware/productionAuth");
@@ -88,8 +89,10 @@ router.get("/applications/:id", productionAuth, getApplicationsByJob);
 
 router.get("/jobs/previous", productionAuth, getPreviousJobs);    
 router.get("/jobs/upcoming", productionAuth, getUpcomingProjects);
+router.get("/jobs/rejected", productionAuth, getRejectedJobs);
 router.get("/jobs/:id", getJobById);
 router.delete("/jobs/:id", productionAuth, deleteJob);
+
 
 
 
