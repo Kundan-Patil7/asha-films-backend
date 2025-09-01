@@ -10,6 +10,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const userRoutes = require("./routes/userRouter");
 const productionRoutes = require("./routes/productionRoutes");
 const pagesRoutes = require("./routes/pagesRouter");
+const plansRoutes = require("./routes/plansRoutes");
 const app = express();
 
 // Middleware
@@ -41,6 +42,8 @@ app.use("/api/content", contentRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/production", productionRoutes);
 app.use("/api/pages", pagesRoutes);
+app.use("/api/plans", plansRoutes);
+
 // 404 Handler
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
