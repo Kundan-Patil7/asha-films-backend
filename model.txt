@@ -25,7 +25,7 @@ CREATE TABLE plans (
     max_work_links INT DEFAULT 0,
 
     masterclass_access BOOLEAN DEFAULT FALSE,
-    showcase_featured BOOLEAN DEFAULT FALSE,
+       showcase_featured BOOLEAN DEFAULT FALSE,
 
     reward_points_on_testimonial INT DEFAULT 0,
 
@@ -58,6 +58,10 @@ CREATE TABLE users (
 
     reward_points INT DEFAULT 0,
     testimonial_video_submitted BOOLEAN DEFAULT FALSE,
+  
+// is_active BOOLEAN DEFAULT TRUE
+//description TEXT
+// popular_badge BOOLEAN DEFAULT FALSE
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

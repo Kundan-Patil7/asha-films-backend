@@ -32,6 +32,10 @@ const ensurePlansTable = async () => {
       showcase_featured BOOLEAN DEFAULT FALSE,
       reward_points_on_testimonial INT DEFAULT 0,
 
+      is_active BOOLEAN DEFAULT TRUE
+      description TEXT
+      popular_badge BOOLEAN DEFAULT FALSE
+
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
@@ -65,7 +69,7 @@ const createPlan = async (req, res) => {
       max_work_links,
       masterclass_access,
       showcase_featured,
-      reward_points_on_testimonial
+      reward_points_on_testimonial,
     } = req.body;
 
     const [result] = await db.query(
@@ -74,7 +78,7 @@ const createPlan = async (req, res) => {
        regional_access, bollywood_access, tollywood_access, pan_india_access, direct_contact_cd,
        unlimited_applications, email_alerts, whatsapp_alerts, whatsapp_alerts_frequency,
        max_pics_upload, max_intro_videos, max_audition_videos, max_work_links,
-       masterclass_access, showcase_featured, reward_points_on_testimonial)
+       masterclass_access, showcase_featured, reward_points_on_testimonial,description,popular_badge)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
@@ -98,11 +102,13 @@ const createPlan = async (req, res) => {
         max_work_links,
         masterclass_access,
         showcase_featured,
-        reward_points_on_testimonial
+        reward_points_on_testimonial,
       ]
     );
 
-    res.status(201).json({ message: "Plan created successfully", planId: result.insertId });
+    res
+      .status(201)
+      .json({ message: "Plan created successfully", planId: result.insertId });
   } catch (error) {
     console.error("❌ Error creating plan:", error);
     res.status(500).json({ error: "Something went wrong" });
@@ -146,13 +152,15 @@ const updatePlan = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const fields = Object.keys(updates).map((key) => `${key} = ?`).join(", ");
+    const fields = Object.keys(updates)
+      .map((key) => `${key} = ?`)
+      .join(", ");
     const values = Object.values(updates);
 
-    const [result] = await db.query(
-      `UPDATE plans SET ${fields} WHERE id = ?`,
-      [...values, id]
-    );
+    const [result] = await db.query(`UPDATE plans SET ${fields} WHERE id = ?`, [
+      ...values,
+      id,
+    ]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: "Plan not found" });
@@ -188,5 +196,5 @@ module.exports = {
   getPlans,
   getPlanById,
   updatePlan,
-  deletePlan
+  deletePlan,
 };

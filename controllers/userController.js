@@ -9,7 +9,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // ===================== UTILITIES =====================
 
 // OTP generator
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const generateOTP = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
 
 // Helper function to construct image URLs
 const constructImageUrl = (req, folder, filename) => {
@@ -34,16 +35,16 @@ const registerUser = async (req, res) => {
 
     // Validate required fields
     if (!pan_no || !aadhaar_no || !name || !email || !mobile || !password) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "All fields are required" 
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
       });
     }
 
     // Create users table if not exists
     const createUserTable = `
       CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id  INT AUTO_INCREMENT PRIMARY KEY,
         email VARCHAR(255) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
         mobile VARCHAR(20) NOT NULL UNIQUE,
@@ -147,6 +148,27 @@ const registerUser = async (req, res) => {
         audition_video VARCHAR(255) DEFAULT NULL,
         portfolio_link VARCHAR(255) DEFAULT NULL,
         availabilities TEXT NULL,
+
+
+-- the below fields will get change when thir plans will ger updated 
+    // plan_id BIGINT,
+    // plan_name VARCHAR(55) DEFAULT 'free',
+    // plan_expiry DATE,
+    // plan_purchase_date  date  
+    // -- Social Links
+   
+    // showcase_facebook_link VARCHAR(255),
+    // showcase_youtube_link VARCHAR(255),
+
+    // -- Tracking usage (not limits, limits come from plan)
+    // uploaded_pics_count INT DEFAULT 0,
+    // uploaded_intro_videos_count INT DEFAULT 0,
+    // uploaded_audition_videos_count INT DEFAULT 0,
+    // uploaded_work_links_count INT DEFAULT 0,
+
+    // reward_points INT DEFAULT 0,
+    // testimonial_video_submitted BOOLEAN DEFAULT FALSE,
+  
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       );
@@ -185,9 +207,9 @@ const registerUser = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ registerUser error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -212,9 +234,9 @@ const loginUser = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
 
@@ -238,9 +260,9 @@ const loginUser = async (req, res) => {
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Invalid credentials" 
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials",
       });
     }
 
@@ -266,9 +288,9 @@ const loginUser = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ loginUser error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -279,9 +301,9 @@ const verifyOTP = async (req, res) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Email and OTP are required" 
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
       });
     }
 
@@ -291,16 +313,16 @@ const verifyOTP = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
 
     if (rows[0].otp_code !== otp) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid OTP" 
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
       });
     }
 
@@ -309,15 +331,15 @@ const verifyOTP = async (req, res) => {
       [email]
     );
 
-    res.status(200).json({ 
-      success: true, 
-      message: "User verified successfully" 
+    res.status(200).json({
+      success: true,
+      message: "User verified successfully",
     });
   } catch (error) {
     console.error("❌ verifyOTP error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -328,19 +350,21 @@ const resendOTP = async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Email is required" 
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
       });
     }
 
     // Check if user exists
-    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [email]);
+    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [
+      email,
+    ]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
 
@@ -348,7 +372,10 @@ const resendOTP = async (req, res) => {
     const otp = generateOTP();
 
     // Update OTP in database
-    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [otp, email]);
+    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [
+      otp,
+      email,
+    ]);
 
     // In production, you would send OTP via email/SMS here
     res.status(200).json({
@@ -358,9 +385,9 @@ const resendOTP = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ resendOTP error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -371,23 +398,28 @@ const forgotPassword = async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Email is required" 
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
       });
     }
 
-    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [email]);
+    const [rows] = await db.query(`SELECT * FROM users WHERE email = ?`, [
+      email,
+    ]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
 
     const otp = generateOTP();
-    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [otp, email]);
+    await db.query(`UPDATE users SET otp_code = ? WHERE email = ?`, [
+      otp,
+      email,
+    ]);
 
     res.status(200).json({
       success: true,
@@ -396,9 +428,9 @@ const forgotPassword = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ forgotPassword error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -423,21 +455,21 @@ const resetPassword = async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "User not found" 
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
       });
     }
 
-    res.status(200).json({ 
-      success: true, 
-      message: "Password reset successful" 
+    res.status(200).json({
+      success: true,
+      message: "Password reset successful",
     });
   } catch (error) {
     console.error("❌ resetPassword error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -484,7 +516,7 @@ const getProfile = async (req, res) => {
       try {
         const parsedImages = JSON.parse(user.images);
         if (Array.isArray(parsedImages)) {
-          user.images = parsedImages.map(img => `${baseUrl}/${img}`);
+          user.images = parsedImages.map((img) => `${baseUrl}/${img}`);
         }
       } catch (err) {
         user.images = [];
@@ -498,9 +530,9 @@ const getProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ getProfile error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -513,19 +545,26 @@ const updateProfile = async (req, res) => {
 
     // Remove restricted fields
     const restricted = [
-      "id", "email", "password", "otp_code", 
-      "is_verified", "created_at", "updated_at"
+      "id",
+      "email",
+      "password",
+      "otp_code",
+      "is_verified",
+      "created_at",
+      "updated_at",
     ];
-    restricted.forEach(field => delete updates[field]);
+    restricted.forEach((field) => delete updates[field]);
 
     // Handle single profile image
     if (req.files && req.files.image) {
-      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [userId]);
-      
+      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [
+        userId,
+      ]);
+
       if (rows.length === 0) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "User not found" 
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
         });
       }
 
@@ -535,12 +574,15 @@ const updateProfile = async (req, res) => {
 
     // Handle headshot image
     if (req.files && req.files.headshot_image) {
-      const [rows] = await db.query("SELECT headshot_image FROM users WHERE id = ?", [userId]);
-      
+      const [rows] = await db.query(
+        "SELECT headshot_image FROM users WHERE id = ?",
+        [userId]
+      );
+
       if (rows.length === 0) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "User not found" 
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
         });
       }
 
@@ -550,12 +592,15 @@ const updateProfile = async (req, res) => {
 
     // Handle full body image
     if (req.files && req.files.full_image) {
-      const [rows] = await db.query("SELECT full_image FROM users WHERE id = ?", [userId]);
-      
+      const [rows] = await db.query(
+        "SELECT full_image FROM users WHERE id = ?",
+        [userId]
+      );
+
       if (rows.length === 0) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "User not found" 
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
         });
       }
 
@@ -565,16 +610,21 @@ const updateProfile = async (req, res) => {
 
     // Handle multiple images upload (append mode)
     if (req.files && req.files.images) {
-      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [userId]);
+      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [
+        userId,
+      ]);
       let currentImages = rows[0].images ? JSON.parse(rows[0].images) : [];
 
-      const newImages = req.files.images.map(file => file.filename);
+      const newImages = req.files.images.map((file) => file.filename);
       updates.images = JSON.stringify([...currentImages, ...newImages]);
     }
 
     // Handle audition video upload
     if (req.files && req.files.audition_video) {
-      const [rows] = await db.query("SELECT audition_video FROM users WHERE id = ?", [userId]);
+      const [rows] = await db.query(
+        "SELECT audition_video FROM users WHERE id = ?",
+        [userId]
+      );
 
       deleteOldFile(rows[0]?.audition_video);
       updates.audition_video = req.files.audition_video[0].filename;
@@ -586,18 +636,25 @@ const updateProfile = async (req, res) => {
     }
 
     if (!updates || Object.keys(updates).length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "No fields to update" 
+      return res.status(400).json({
+        success: false,
+        message: "No fields to update",
       });
     }
 
-    const setClause = Object.keys(updates).map(f => `${f} = ?`).join(", ");
+    const setClause = Object.keys(updates)
+      .map((f) => `${f} = ?`)
+      .join(", ");
     const values = Object.values(updates);
 
-    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [...values, userId]);
+    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [
+      ...values,
+      userId,
+    ]);
 
-    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
+    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [
+      userId,
+    ]);
     delete updatedUser[0].password;
     delete updatedUser[0].otp_code;
 
@@ -608,9 +665,9 @@ const updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ updateProfile error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -620,7 +677,9 @@ const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [rows] = await db.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [id]);
+    const [rows] = await db.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [
+      id,
+    ]);
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -633,10 +692,15 @@ const getUserById = async (req, res) => {
 
     // Remove sensitive/unnecessary fields
     const sensitiveFields = [
-      "password", "otp_code", "blocked", "suspended", 
-      "suspended_from", "suspended_to", "is_verified"
+      "password",
+      "otp_code",
+      "blocked",
+      "suspended",
+      "suspended_from",
+      "suspended_to",
+      "is_verified",
     ];
-    sensitiveFields.forEach(field => delete user[field]);
+    sensitiveFields.forEach((field) => delete user[field]);
 
     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media`;
 
@@ -662,7 +726,7 @@ const getUserById = async (req, res) => {
       try {
         const parsedImages = JSON.parse(user.images);
         if (Array.isArray(parsedImages)) {
-          user.images = parsedImages.map(img => `${baseUrl}/${img}`);
+          user.images = parsedImages.map((img) => `${baseUrl}/${img}`);
         } else {
           user.images = [];
         }
@@ -725,11 +789,14 @@ const jobApply = async (req, res) => {
     const user_id = req.user.id;
 
     // Verify the job exists and is active
-    const [jobCheck] = await db.query(`
+    const [jobCheck] = await db.query(
+      `
       SELECT id, production_house_id, project_type, application_deadline 
       FROM job 
       WHERE id = ?
-    `, [job_id]);
+    `,
+      [job_id]
+    );
 
     if (jobCheck.length === 0) {
       return res.status(404).json({
@@ -741,7 +808,10 @@ const jobApply = async (req, res) => {
     const job = jobCheck[0];
 
     // Check if application deadline has passed
-    if (job.application_deadline && new Date(job.application_deadline) < new Date()) {
+    if (
+      job.application_deadline &&
+      new Date(job.application_deadline) < new Date()
+    ) {
       return res.status(400).json({
         success: false,
         message: "Application deadline has passed",
@@ -749,11 +819,14 @@ const jobApply = async (req, res) => {
     }
 
     // Check if user already applied for this job
-    const [existing] = await db.query(`
+    const [existing] = await db.query(
+      `
       SELECT application_id 
       FROM job_applications 
       WHERE user_id = ? AND production_id = ?
-    `, [user_id, job_id]);
+    `,
+      [user_id, job_id]
+    );
 
     if (existing.length > 0) {
       return res.status(400).json({
@@ -764,14 +837,18 @@ const jobApply = async (req, res) => {
     }
 
     // Insert new application
-    const [result] = await db.query(`
+    const [result] = await db.query(
+      `
       INSERT INTO job_applications 
       (status, role_specific_info, production_id, user_id, travel, availability) 
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [status, role_specific_info, job_id, user_id, travel, availability]);
+    `,
+      [status, role_specific_info, job_id, user_id, travel, availability]
+    );
 
     // Get the complete application data for response
-    const [applicationData] = await db.query(`
+    const [applicationData] = await db.query(
+      `
       SELECT 
         ja.*,
         j.project_type,
@@ -780,7 +857,9 @@ const jobApply = async (req, res) => {
       FROM job_applications ja
       JOIN job j ON ja.production_id = j.id
       WHERE ja.application_id = ?
-    `, [result.insertId]);
+    `,
+      [result.insertId]
+    );
 
     return res.status(201).json({
       success: true,
@@ -805,7 +884,7 @@ const jobApply = async (req, res) => {
     console.error("❌ Error in jobApply controller:", error);
 
     // Handle specific MySQL errors
-    if (error.code === 'ER_DUP_ENTRY') {
+    if (error.code === "ER_DUP_ENTRY") {
       return res.status(400).json({
         success: false,
         message: "You have already applied for this job",
@@ -813,7 +892,7 @@ const jobApply = async (req, res) => {
       });
     }
 
-    if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+    if (error.code === "ER_NO_REFERENCED_ROW_2") {
       return res.status(400).json({
         success: false,
         message: "Invalid job ID or user ID",
@@ -860,9 +939,9 @@ const getMyApplications = async (req, res) => {
 
     const [results] = await db.query(sql, [user_id]);
 
-    const applications = results.map(app => ({
+    const applications = results.map((app) => ({
       application_id: app.application_id,
-      status: app.status ? 'Approved' : 'Pending',
+      status: app.status ? "Approved" : "Pending",
       role_specific_info: app.role_specific_info,
       travel: app.travel,
       availability: app.availability,
@@ -904,11 +983,14 @@ const cancelApplication = async (req, res) => {
     const user_id = req.user.id;
 
     // Verify application belongs to user
-    const [check] = await db.query(`
+    const [check] = await db.query(
+      `
       SELECT application_id 
       FROM job_applications 
       WHERE application_id = ? AND user_id = ?
-    `, [application_id, user_id]);
+    `,
+      [application_id, user_id]
+    );
 
     if (check.length === 0) {
       return res.status(404).json({
@@ -917,10 +999,13 @@ const cancelApplication = async (req, res) => {
       });
     }
 
-    await db.query(`
+    await db.query(
+      `
       DELETE FROM job_applications 
       WHERE application_id = ? AND user_id = ?
-    `, [application_id, user_id]);
+    `,
+      [application_id, user_id]
+    );
 
     res.status(200).json({
       success: true,
