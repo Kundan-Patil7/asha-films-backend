@@ -5,20 +5,22 @@ const db = require("../config/database");
 // Home page
 const getHomeData = async (req, res) => {
   try {
-    // 1. Get artists with birthday today
+    // 1. Get artists with birthday today (FIXED)
     const [birthdayArtists] = await db.query(`
       SELECT name, image 
       FROM users 
-      WHERE DATE_FORMAT(date_of_birth, '%m-%d') = DATE_FORMAT(CURDATE(), '%m-%d')
+      WHERE DATE_FORMAT(date_of_birth, '%m-%d') = DATE_FORMAT(UTC_DATE(), '%m-%d')
       AND image IS NOT NULL
+      AND is_verified = 1
       ORDER BY created_at DESC
     `);
 
+   
     // Format birthday artists with image URLs
     const formattedBirthdayArtists = birthdayArtists.map((artist) => ({
       name: artist.name,
       image: artist.image
-        ? `${req.protocol}://${req.get("host")}/uploads/users/${artist.image}`
+        ? `${req.protocol}://${req.get("host")}/uploads/user_media/${artist.image}`
         : null,
     }));
 
@@ -42,7 +44,6 @@ const getHomeData = async (req, res) => {
       project_type: job.project_type,
       project_description: job.project_description.substring(0, 100) + "...",
       city_location: job.city_location,
-
       posted_on: job.created_at,
     }));
 
@@ -55,9 +56,7 @@ const getHomeData = async (req, res) => {
 
     // Format featured artists with image URLs
     const formattedFeaturedArtists = featuredArtists.map((artist) => ({
-      image: `${req.protocol}://${req.get("host")}/uploads/artists/${
-        artist.image
-      }`,
+      image: `${req.protocol}://${req.get("host")}/uploads/artists/${artist.image}`,
     }));
 
     res.status(200).json({
@@ -77,6 +76,9 @@ const getHomeData = async (req, res) => {
     });
   }
 };
+
+
+
 
 // const filterUsers = async (req, res) => {
 //   try {

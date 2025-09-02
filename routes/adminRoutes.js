@@ -1,7 +1,7 @@
 const express = require("express");
 const { adminLogin, profile } = require("../controllers/admin/authController");
 const verifyAdmin = require("../middleware/admin");
-const { fetchTickets, allUsers, blockUser, suspendUser, unsuspendUser, changePlan, approveJob } = require("../controllers/admin/dashboardController");
+const { fetchTickets, allUsers, blockUser, suspendUser, unsuspendUser, changePlan, approveJob,getAllTransactions } = require("../controllers/admin/dashboardController");
 const router = express.Router();
 
 // Admin login
@@ -24,6 +24,7 @@ router.put("/admin/users/suspend", suspendUser);
 router.put("/admin/users/unsuspend", unsuspendUser);
 router.put("/admin/users/change-plan", changePlan);
 
+router.get("/admin/transactions", getAllTransactions);
 
 //approveJob
 router.put("/admin/jobs/approve", approveJob); // approve job (jobId in body)
