@@ -2323,7 +2323,7 @@ const getMyApplications = async (req, res) => {
         compensation: app.compensation,
         production_house_name: app.production_house_name,
         status: app.job_status === 1 ? "Approved" : app.job_status === 2 ? "Rejected" : "Pending",
-        image_url: constructImageUrl(req, "jobs", app.job_image),
+        image_url: constructImageUrl(req, "jobCovers", app.job_image),
       },
     }));
 
