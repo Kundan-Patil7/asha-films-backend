@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  checkDiscardedJob,
+
   registerProductionHouse,
   loginProductionHouse,
   verifyProductionHouseOTP,
@@ -92,7 +92,6 @@ router.get("/applications/:id", productionAuth, getApplicationsByJob);
 router.get("/jobs/previous", productionAuth, getPreviousJobs);    
 router.get("/jobs/upcoming", productionAuth, getUpcomingProjects);
 router.get("/jobs/rejected", productionAuth, getRejectedJobs);
-router.get("/jobs/discard", productionAuth,checkDiscardedJob);
 
 
 router.get("/jobs/:id", getJobById);

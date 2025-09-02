@@ -603,7 +603,6 @@ const addJob = async (req, res) => {
 
     const jobData = {
       ...req.body,
-      status: 0, // default pending
       production_house_id: req.user.id,
       production_house_name: req.user.company_name,
       image: req.file?.filename || null,
@@ -1181,11 +1180,7 @@ const getRejectedJobs = async (req, res) => {
 };
 
 
-const checkDiscardedJob = async (req, res) => {
- 
 
-   
-};
 
 
 
@@ -1213,7 +1208,7 @@ module.exports = {
   getUpcomingProjects,
   getPopCstingCall,
   getRejectedJobs,
-  checkDiscardedJob
+  
 
 };
 

@@ -267,23 +267,6 @@ const getAllTransactions = async (req, res) => {
       message: "Error fetching transaction history",
       error: error.message,
     });
-
-    const { jobId, status } = req.body; // status = 1 (approve), 2 (discard)
-
-    if (![1, 2].includes(status)) {
-      return res.status(400).json({ success: false, message: "Invalid status value" });
-    }
-
-    await db.query(`UPDATE job SET status = ? WHERE id = ?`, [status, jobId]);
-
-    res.status(200).json({
-      success: true,
-      message: `Job ${status === 1 ? "Approved" : "Discarded"} successfully`,
-    });
-  } catch (error) {
-    console.error("❌ updateJobStatus error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
-
   }
 };
 
@@ -298,6 +281,7 @@ module.exports = {
   changePlan,
   createTicket,
   approveJob,
-  getAllTransactions
+  getAllTransactions,
+
 
 };
