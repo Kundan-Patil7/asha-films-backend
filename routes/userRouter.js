@@ -13,7 +13,8 @@ const {
   getUserById,
   updateUserPlan,
   getUserPlan,
-  getUserPlanHistory
+  getUserPlanHistory,
+  getMyApplications
 } = require("../controllers/userController");
 const authMiddleware = require("../middleware/user");
 const combinedUpload = require("../middleware/userprofile");
@@ -53,7 +54,7 @@ router.post("/job-apply", authMiddleware, jobApply);
 router.get("/popular-casting-calls", getPopCstingCall);
 
 
-
+router.get("/job-applications", authMiddleware, getMyApplications);
 
 //  user plan 
 

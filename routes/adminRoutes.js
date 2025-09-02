@@ -27,7 +27,7 @@ router.put("/admin/users/change-plan", changePlan);
 router.get("/admin/transactions", getAllTransactions);
 
 //approveJob
-router.put("/admin/jobs/approve", approveJob); // approve job (jobId in body)
+router.put("/admin/jobs/approve", approveJob);
 
 
 
