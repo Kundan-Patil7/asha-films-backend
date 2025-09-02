@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
+  checkDiscardedJob,
   registerProductionHouse,
   loginProductionHouse,
   verifyProductionHouseOTP,
@@ -23,6 +24,7 @@ const {
   getUpcomingProjects,
   getRejectedJobs,
 } = require("../controllers/productionController");
+
 const productionProfileImage = require("../middleware/productionProfileImg");
 const productionAuth = require("../middleware/productionAuth");
 const jobCoverImageUpload = require("../middleware/job");
@@ -90,6 +92,9 @@ router.get("/applications/:id", productionAuth, getApplicationsByJob);
 router.get("/jobs/previous", productionAuth, getPreviousJobs);    
 router.get("/jobs/upcoming", productionAuth, getUpcomingProjects);
 router.get("/jobs/rejected", productionAuth, getRejectedJobs);
+router.get("/jobs/discard", productionAuth,checkDiscardedJob);
+
+
 router.get("/jobs/:id", getJobById);
 router.delete("/jobs/:id", productionAuth, deleteJob);
 

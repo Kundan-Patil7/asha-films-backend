@@ -603,6 +603,7 @@ const addJob = async (req, res) => {
 
     const jobData = {
       ...req.body,
+      status: 0, // default pending
       production_house_id: req.user.id,
       production_house_name: req.user.company_name,
       image: req.file?.filename || null,
@@ -612,7 +613,7 @@ const addJob = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Job added successfully",
+      message: "Job added successfully (Pending Approval)",
     });
   } catch (error) {
     console.error("❌ addJob error:", error);
@@ -623,6 +624,7 @@ const addJob = async (req, res) => {
     });
   }
 };
+
 
 const editJob = async (req, res) => {
   try {
@@ -1038,9 +1040,6 @@ const getApplicationsByJob = async (req, res) => {
   }
 };
 
-
-
-
 // ✅ Get all popular casting calls which are not expired
 const getPopCstingCall = async (req, res) => {
   try {
@@ -1052,7 +1051,6 @@ const getPopCstingCall = async (req, res) => {
     AND (j.application_deadline IS NULL OR j.application_deadline >= NOW())
   ORDER BY j.created_at DESC
 `);
-
 
     // Format the results with image URLs
     const formattedJobs = jobs.map((job) => ({
@@ -1115,7 +1113,6 @@ const getPreviousJobs = async (req, res) => {
 // ===================== Upcoming Projects =====================
 const getUpcomingProjects = async (req, res) => {
   try {
-
     const id = req.user.id;
     const [rows] = await db.query(
       `SELECT * FROM job 
@@ -1145,6 +1142,7 @@ const getUpcomingProjects = async (req, res) => {
     });
   }
 };
+
 
 
 
@@ -1182,6 +1180,16 @@ const getRejectedJobs = async (req, res) => {
   }
 };
 
+
+const checkDiscardedJob = async (req, res) => {
+ 
+
+   
+};
+
+
+
+
 // ===================== EXPORTS =====================
 
 module.exports = {
@@ -1204,5 +1212,15 @@ module.exports = {
   getPreviousJobs,
   getUpcomingProjects,
   getPopCstingCall,
-  getRejectedJobs
+  getRejectedJobs,
+  checkDiscardedJob
+
 };
+
+
+
+
+
+
+
+
