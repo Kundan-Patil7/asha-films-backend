@@ -1,7 +1,6 @@
 const db = require("../config/database");
 
-
-// ✅ Ensure plans table exists
+// ✅ Ensure `plans` table exists
 const ensurePlansTable = async () => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS plans (
@@ -32,6 +31,8 @@ const ensurePlansTable = async () => {
       masterclass_access BOOLEAN DEFAULT FALSE,
       showcase_featured BOOLEAN DEFAULT FALSE,
       reward_points_on_testimonial INT DEFAULT 0,
+
+      description TEXT NULL,   
 
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -66,17 +67,19 @@ const createPlan = async (req, res) => {
       max_work_links,
       masterclass_access,
       showcase_featured,
-      reward_points_on_testimonial
+      reward_points_on_testimonial,
+      description
     } = req.body;
 
     const [result] = await db.query(
       `INSERT INTO plans 
-      (name, price, duration_in_days, verified_actor_badge, consolidated_profile, free_learning_videos,
-       regional_access, bollywood_access, tollywood_access, pan_india_access, direct_contact_cd,
-       unlimited_applications, email_alerts, whatsapp_alerts, whatsapp_alerts_frequency,
-       max_pics_upload, max_intro_videos, max_audition_videos, max_work_links,
-       masterclass_access, showcase_featured, reward_points_on_testimonial)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (name, price, duration_in_days, verified_actor_badge, consolidated_profile, free_learning_videos,
+         regional_access, bollywood_access, tollywood_access, pan_india_access, direct_contact_cd,
+         unlimited_applications, email_alerts, whatsapp_alerts, whatsapp_alerts_frequency,
+         max_pics_upload, max_intro_videos, max_audition_videos, max_work_links,
+         masterclass_access, showcase_featured, reward_points_on_testimonial, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
       [
         name,
         price,
@@ -99,11 +102,15 @@ const createPlan = async (req, res) => {
         max_work_links,
         masterclass_access,
         showcase_featured,
-        reward_points_on_testimonial
+        reward_points_on_testimonial,
+        description
       ]
     );
 
-    res.status(201).json({ message: "Plan created successfully", planId: result.insertId });
+    res.status(201).json({
+      message: "Plan created successfully",
+      planId: result.insertId
+    });
   } catch (error) {
     console.error("❌ Error creating plan:", error);
     res.status(500).json({ error: "Something went wrong" });
@@ -171,6 +178,7 @@ const deletePlan = async (req, res) => {
   try {
     await ensurePlansTable();
     const { id } = req.params;
+
     const [result] = await db.query("DELETE FROM plans WHERE id = ?", [id]);
 
     if (result.affectedRows === 0) {
