@@ -868,6 +868,8 @@ const getAllApplicationsByProduction = async (req, res) => {
         ja.travel,
         ja.availability,
         ja.created_at,
+        ja.courses,
+        ja.previous_work,
         j.id as job_id,
         j.project_type,
         j.project_description,
@@ -976,14 +978,16 @@ const getApplicationsByJob = async (req, res) => {
         u.gender,
         u.current_location,
         ja.application_id,
-        ja.status,
+     
         ja.role_specific_info,
         ja.travel,
         ja.availability,
+        ja.previous_work,
+        ja.courses,
         ja.created_at
       FROM job_applications ja
       JOIN users u ON ja.user_id = u.id
-      WHERE ja.production_id = ?
+      WHERE ja.job_id = ?
       ORDER BY ja.created_at DESC
     `;
 
@@ -1004,7 +1008,7 @@ const getApplicationsByJob = async (req, res) => {
 
       return {
         application_id: app.application_id,
-        status: app.status,
+     
         role_specific_info: app.role_specific_info,
         travel: app.travel,
         availability: app.availability,
@@ -1019,6 +1023,8 @@ const getApplicationsByJob = async (req, res) => {
           gender: app.gender,
           age: age,
           image_url: constructImageUrl(req, "user_media", app.user_image),
+          previous_work: app.previous_work,
+          courses: app.courses,
         },
       };
     });
