@@ -23,6 +23,7 @@ const {
   getPreviousJobs,
   getUpcomingProjects,
   getRejectedJobs,
+  
 } = require("../controllers/productionController");
 
 const productionProfileImage = require("../middleware/productionProfileImg");
@@ -86,8 +87,9 @@ router.get("/jobs", getAllJobs);
 
 
 router.get("/applications", productionAuth, MyJobPostings);
-router.get("/applications/:id", productionAuth, getApplicationsByJob);
+router.get("/applications/all" ,productionAuth, getAllApplicationsByProduction);
 
+router.get("/applications/:id", productionAuth, getApplicationsByJob);
 
 router.get("/jobs/previous", productionAuth, getPreviousJobs);    
 router.get("/jobs/upcoming", productionAuth, getUpcomingProjects);

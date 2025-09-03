@@ -856,6 +856,7 @@ const MyJobPostings = async (req, res) => {
 
 // ===================== JOB APPLICATION MANAGEMENT =====================
 
+
 const getAllApplicationsByProduction = async (req, res) => {
   try {
     const production_id = req.user.id; // From middleware
@@ -884,7 +885,7 @@ const getAllApplicationsByProduction = async (req, res) => {
         u.date_of_birth,
         u.image as user_image
       FROM job_applications ja
-      JOIN job j ON ja.production_id = j.id
+      JOIN job j ON ja.job_id = j.id  
       JOIN users u ON ja.user_id = u.id
       WHERE j.production_house_id = ?
       ORDER BY ja.created_at DESC
@@ -896,47 +897,48 @@ const getAllApplicationsByProduction = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "No job applications found",
-        data: [],
-        count: 0,
+        job: null,
+        users: [],
+        total_users: 0,
       });
     }
 
-    // Format applications with age calculation and image URLs
-    const applications = results.map((app) => {
-      const age = calculateAge(app.date_of_birth);
+    // Extract job data (only once)
+    const job = {
+      id: results[0].job_id,
+      project_type: results[0].project_type,
+      project_description: results[0].project_description,
+      role_type: results[0].role_type,
+      gender: results[0].gender,
+      age_range: results[0].age_range,
+    };
 
+    // Extract users (all applicants)
+    const users = results.map((app) => {
+      const age = calculateAge(app.date_of_birth);
       return {
+        id: app.user_id,
+        name: app.name,
+        email: app.email,
+        mobile: app.mobile,
+        city: app.city,
+        age: age,
+        image_url: constructImageUrl(req, "user_media", app.user_image),
+        applied_on: app.created_at,
         application_id: app.application_id,
         status: app.status,
         role_specific_info: app.role_specific_info,
         travel: app.travel,
         availability: app.availability,
-        applied_on: app.created_at,
-        job: {
-          id: app.job_id,
-          project_type: app.project_type,
-          project_description: app.project_description,
-          role_type: app.role_type,
-          gender: app.gender,
-          age_range: app.age_range,
-        },
-        user: {
-          id: app.user_id,
-          name: app.name,
-          email: app.email,
-          mobile: app.mobile,
-          city: app.city,
-          age: age,
-          image_url: constructImageUrl(req, "user_media", app.user_image),
-        },
       };
     });
 
     return res.status(200).json({
       success: true,
-      message: "All job applications fetched successfully",
-      data: applications,
-      count: applications.length,
+      message: "Job and applicants fetched successfully",
+      job,
+      users,
+      total_users: users.length,
     });
   } catch (error) {
     console.error("❌ getAllApplicationsByProduction error:", error);
@@ -947,6 +949,8 @@ const getAllApplicationsByProduction = async (req, res) => {
     });
   }
 };
+
+
 
 const getApplicationsByJob = async (req, res) => {
   try {
