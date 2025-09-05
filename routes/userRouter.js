@@ -14,7 +14,8 @@ const {
   updateUserPlan,
   getUserPlan,
   getUserPlanHistory,
-  getMyApplications
+  getMyApplications,
+  CallsForYou,
 } = require("../controllers/userController");
 const authMiddleware = require("../middleware/user");
 const combinedUpload = require("../middleware/userprofile");
@@ -65,5 +66,9 @@ router.get("/plan/current", authMiddleware, getUserPlan);
 
 // Get plan history for user
 router.get("/plan/history", authMiddleware, getUserPlanHistory);
+
+
+//  personalized calls for you ⭐⭐⭐
+router.get("/calls-for-you", authMiddleware, CallsForYou);
 
 module.exports = router;

@@ -2656,6 +2656,80 @@ const getUserPlanHistory = async (req, res) => {
   }
 };
 
+
+
+const CallsForYou = async (req, res) => {
+ 
+  const userId = req.user.id;
+
+  try {
+    // 1️⃣ Fetch user info
+    const [userRows] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
+    if (userRows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    const user = userRows[0];
+
+    // 2️⃣ Fetch all jobs
+    const [jobs] = await db.query(`SELECT * FROM job WHERE status = 1`); // only active jobs
+
+    // 3️⃣ Filtering logic
+    const applicableJobs = jobs.filter((job) => {
+      // gender match
+      if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
+        return false;
+      }
+
+      // language check
+      if (job.language_required && user.language) {
+        const userLanguages = user.language.split(",").map((l) => l.trim().toLowerCase());
+        if (!userLanguages.includes(job.language_required.toLowerCase())) {
+          return false;
+        }
+      }
+
+      // age check
+      if (job.age_range && user.date_of_birth) {
+        const age = Math.floor(
+          (new Date() - new Date(user.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000)
+        );
+        const [minAge, maxAge] = job.age_range.split("-").map((n) => parseInt(n));
+        if (age < minAge || age > maxAge) {
+          return false;
+        }
+      }
+
+      // body type check
+      if (job.body_type && user.body_type && job.body_type.toLowerCase() !== user.body_type.toLowerCase()) {
+        return false;
+      }
+
+      // skills check
+      if (job.skills_needed && user.skills) {
+        const jobSkills = job.skills_needed.toLowerCase().split(",");
+        const userSkills = user.skills.toLowerCase().split(",");
+        const matched = jobSkills.some((skill) => userSkills.includes(skill.trim()));
+        if (!matched) return false;
+      }
+
+      return true;
+    });
+
+    // 4️⃣ Response
+    res.status(200).json({
+      success: true,
+      total_jobs: applicableJobs.length,
+      jobs: applicableJobs,
+    });
+  } catch (error) {
+    console.error("❌ CallsForYou error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 // ===================== EXPORTS =====================
 module.exports = {
   registerUser,
@@ -2672,5 +2746,6 @@ module.exports = {
   cancelApplication,
   updateUserPlan,
   getUserPlan,
-  getUserPlanHistory
+  getUserPlanHistory,
+  CallsForYou,
 };
