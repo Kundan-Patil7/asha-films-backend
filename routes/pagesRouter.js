@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.get('/home', getHomeData );
 
-router.get("/filter", filterUsers);
+router.post("/filter", filterUsers);
 
 // Export the router
 module.exports = router;

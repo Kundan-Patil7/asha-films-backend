@@ -79,199 +79,139 @@ const getHomeData = async (req, res) => {
 
 
 
-
-// const filterUsers = async (req, res) => {
-//   try {
-//     const {
-//       gender,
-//       ageRange,
-//       hair_color,
-//       body_type,
-//       beard,
-//       eye_color,
-//       city,
-//       page = 1,
-//       limit = 15,
-//     } = req.body || {};
-
-//     let query = `SELECT id, name, date_of_birth, gender, city, image 
-//                  FROM users WHERE is_verified = 1`;
-//     let countQuery = `SELECT COUNT(*) as total FROM users WHERE is_verified = 1`;
-//     let params = [];
-//     let countParams = [];
-
-//     // Gender filter
-//     if (gender && gender.length > 0) {
-//       query += ` AND gender IN (?)`;
-//       countQuery += ` AND gender IN (?)`;
-//       params.push(gender);
-//       countParams.push(gender);
-//     }
-
-//     // Age filter
-//     if (ageRange && ageRange.length > 0) {
-//       let ageConditions = [];
-//       ageRange.forEach((range) => {
-//         switch (range) {
-//           case "0-2":
-//             ageConditions.push(
-//               "TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 0 AND 2"
-//             );
-//             break;
-//           case "3-5":
-//             ageConditions.push(
-//               "TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 3 AND 5"
-//             );
-//             break;
-//           case "6-9":
-//             ageConditions.push(
-//               "TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 6 AND 9"
-//             );
-//             break;
-//           case "10-13":
-//             ageConditions.push(
-//               "TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 10 AND 13"
-//             );
-//             break;
-//           case "14-17":
-//             ageConditions.push(
-//               "TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 14 AND 17"
-//             );
-//             break;
-//           case "18-24":
-//             ageConditions.push(
-//               "TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) BETWEEN 18 AND 24"
-//             );
-//             break;
-//           default:
-//             break;
-//         }
-//       });
-//       if (ageConditions.length > 0) {
-//         const ageSQL = `(${ageConditions.join(" OR ")})`;
-//         query += ` AND ${ageSQL}`;
-//         countQuery += ` AND ${ageSQL}`;
-//       }
-//     }
-
-//     // Hair color
-//     if (hair_color && hair_color.length > 0) {
-//       query += ` AND hair_color IN (?)`;
-//       countQuery += ` AND hair_color IN (?)`;
-//       params.push(hair_color);
-//       countParams.push(hair_color);
-//     }
-
-//     // Body type
-//     if (body_type && body_type.length > 0) {
-//       query += ` AND body_type IN (?)`;
-//       countQuery += ` AND body_type IN (?)`;
-//       params.push(body_type);
-//       countParams.push(body_type);
-//     }
-
-//     // Beard
-//     if (beard && beard.length > 0) {
-//       query += ` AND beard IN (?)`;
-//       countQuery += ` AND beard IN (?)`;
-//       params.push(beard);
-//       countParams.push(beard);
-//     }
-
-//     // Eye color
-//     if (eye_color && eye_color.length > 0) {
-//       query += ` AND eye_color IN (?)`;
-//       countQuery += ` AND eye_color IN (?)`;
-//       params.push(eye_color);
-//       countParams.push(eye_color);
-//     }
-
-//     // City
-//     if (city && city.length > 0) {
-//       query += ` AND city IN (?)`;
-//       countQuery += ` AND city IN (?)`;
-//       params.push(city);
-//       countParams.push(city);
-//     }
-
-//     // Count total records
-//     const [countResult] = await db.query(countQuery, countParams);
-//     const totalRecords = countResult[0].total;
-//     const totalPages = Math.ceil(totalRecords / limit);
-
-//     // Pagination
-//     const offset = (page - 1) * limit;
-//     query += ` LIMIT ? OFFSET ?`;
-//     params.push(Number(limit), Number(offset));
-
-//     const [users] = await db.query(query, params);
-
-//     // 🔥 Convert image filename -> full URL
-  //  const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
-//     const formattedUsers = users.map((user) => ({
-//       id: user.id,
-//       name: user.name,
-//       age:
-//         new Date().getFullYear() - new Date(user.date_of_birth).getFullYear(),
-//       gender: user.gender,
-//       city: user.city,
-//       image: user.image ? baseUrl + user.image : null,
-//     }));
-
-//     res.status(200).json({
-//       success: true,
-//       page: Number(page),
-//       limit: Number(limit),
-//       totalRecords,
-//       totalPages,
-//       count: formattedUsers.length,
-//       data: formattedUsers,
-//     });
-//   } catch (error) {
-//     console.error("❌ filterUsers error:", error);
-//     res.status(500).json({ success: false, message: "Server error" });
-//   }
-// };
-
-
 const filterUsers = async (req, res) => {
   try {
     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
 
-    // ✅ Select all required fields
-    const query = `
+    // Extract filters + pagination + sorting
+    const {
+      gender = [],
+      ageRange = [],
+      hair_color = [],
+      body_type = [],
+      beard = [],
+      eye_color = [],
+      dob_from,
+      dob_to,
+      sortBy,
+      sortOrder,
+      page = 1,
+      limit = 10,
+    } = req.body;
+
+    // Base query
+    let query = `
       SELECT 
-        name, 
-        date_of_birth, 
-        gender, 
-        city, 
-        image, 
-        hair_color, 
-        body_type, 
-        beard, 
+        id,
+        name,
+        date_of_birth,
+        gender,
+        city,
+        image,
+        hair_color,
+        body_type,
+        beard,
         eye_color
       FROM users 
       WHERE is_verified = 1
     `;
+    const values = [];
 
-    const [users] = await db.query(query);
+    // Gender filter
+    if (Array.isArray(gender) && gender.length > 0) {
+      query += ` AND gender IN (?)`;
+      values.push(gender);
+    }
 
-    const Users = users.map((user) => ({
-      name: user.name,
-      age: user.date_of_birth
-        ? new Date().getFullYear() - new Date(user.date_of_birth).getFullYear()
-        : null,
-      gender: user.gender || null,
-      city: user.city || null,
-      hair_color: user.hair_color || null,
-      body_type: user.body_type || null,
-      beard: user.beard || null,
-      eye_color: user.eye_color || null,
-      image: user.image ? baseUrl + user.image : null,
-    }));
+    // Age range filter
+    if (Array.isArray(ageRange) && ageRange.length > 0) {
+      const ageConditions = ageRange.map((range) => {
+        const [min, max] = range.split("-").map(Number);
+        const currentYear = new Date().getFullYear();
+        const minDob = `${currentYear - max}-01-01`;
+        const maxDob = `${currentYear - min}-12-31`;
+        return `(date_of_birth BETWEEN '${minDob}' AND '${maxDob}')`;
+      });
+      query += ` AND (${ageConditions.join(" OR ")})`;
+    }
+
+    // Direct DOB filter
+    if (dob_from && dob_to) {
+      query += ` AND date_of_birth BETWEEN ? AND ?`;
+      values.push(dob_from, dob_to);
+    }
+
+    // Other filters
+    if (Array.isArray(hair_color) && hair_color.length > 0) {
+      query += ` AND hair_color IN (?)`;
+      values.push(hair_color);
+    }
+    if (Array.isArray(body_type) && body_type.length > 0) {
+      query += ` AND body_type IN (?)`;
+      values.push(body_type);
+    }
+    if (Array.isArray(beard) && beard.length > 0) {
+      query += ` AND beard IN (?)`;
+      values.push(beard);
+    }
+    if (Array.isArray(eye_color) && eye_color.length > 0) {
+      query += ` AND eye_color IN (?)`;
+      values.push(eye_color);
+    }
+
+    // Sorting (whitelist fields)
+    const allowedSort = ["date_of_birth", "name", "created_at"];
+    const safeSortBy = allowedSort.includes(sortBy) ? sortBy : "created_at";
+    const safeSortOrder =
+      sortOrder && sortOrder.toUpperCase() === "ASC" ? "ASC" : "DESC";
+    query += ` ORDER BY ${safeSortBy} ${safeSortOrder}`;
+
+    // Pagination
+    const offset = (page - 1) * limit;
+    query += ` LIMIT ? OFFSET ?`;
+    values.push(Number(limit), Number(offset));
+
+    // Run query
+    const [users] = await db.query(query, values);
+
+    // Count total users (without LIMIT/OFFSET)
+    const [countResult] = await db.query(
+      `
+      SELECT COUNT(*) as total
+      FROM users
+      WHERE is_verified = 1
+    `
+    );
+    const totalCount = countResult[0].total;
+
+    // Transform result
+    const Users = users.map((user) => {
+      const dob = user.date_of_birth ? new Date(user.date_of_birth) : null;
+      const age = dob
+        ? new Date().getFullYear() - dob.getFullYear()
+        : null;
+
+      return {
+        id: user.id,
+        name: user.name,
+        age,
+        date_of_birth: user.date_of_birth,
+        gender: user.gender || null,
+        city: user.city || null,
+        hair_color: user.hair_color || null,
+        body_type: user.body_type || null,
+        beard: user.beard || null,
+        eye_color: user.eye_color || null,
+        image: user.image ? baseUrl + user.image : null,
+      };
+    });
 
     res.status(200).json({
       success: true,
+      page: Number(page),
+      limit: Number(limit),
+      total: totalCount,
+      count: Users.length,
       data: Users,
     });
   } catch (error) {
