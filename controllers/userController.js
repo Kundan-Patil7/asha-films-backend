@@ -2062,6 +2062,7 @@ const getUserById = async (req, res) => {
       eye_color: user.eye_color,
       availabilities: user.availabilities,
       skills: user.skills,
+      date_of_birth: user.date_of_birth,
     };
 
     // ✅ Profile links grouped
