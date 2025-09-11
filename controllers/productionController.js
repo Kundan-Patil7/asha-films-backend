@@ -875,12 +875,13 @@ const getAllApplicationsByProduction = async (req, res) => {
         j.project_type,
         j.project_description,
         j.role_type,
-        j.gender,
+        
         j.age_range,
         u.id as user_id,
         u.name,
         u.email,
         u.mobile,
+        u.gender,
         u.city,
         u.date_of_birth,
         u.image as user_image
