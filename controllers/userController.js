@@ -2036,21 +2036,26 @@ const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [rows] = await db.query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [
-      id,
-    ]);
+    const [rows] = await db.query(
+      `SELECT 
+        id, name, gender, city, height, hair_color, shoe_size, eye_color,
+        availabilities, skills, date_of_birth,
+        portfolio_link, imdb_profile, instagram_link, 
+        showcase_facebook_link, showcase_youtube_link,
+        image, headshot_image, full_image, audition_video, images
+       FROM users
+       WHERE id = ? 
+       LIMIT 1`,
+      [id]
+    );
 
     if (rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     let user = rows[0];
     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media`;
 
-    // ✅ Basic info
     const responseData = {
       id: user.id,
       name: user.name,
@@ -2063,51 +2068,39 @@ const getUserById = async (req, res) => {
       availabilities: user.availabilities,
       skills: user.skills,
       date_of_birth: user.date_of_birth,
+      profile_links: {
+        portfolio_link: user.portfolio_link || null,
+        imdb_profile: user.imdb_profile || null,
+        instagram_link: user.instagram_link || null,
+        facebook_link: user.showcase_facebook_link || null,
+        youtube_link: user.showcase_youtube_link || null,
+      },
+      media: {
+        profile_image: user.image ? `${baseUrl}/${user.image}` : null,
+        headshot_image: user.headshot_image ? `${baseUrl}/${user.headshot_image}` : null,
+        full_image: user.full_image ? `${baseUrl}/${user.full_image}` : null,
+        audition_video: user.audition_video ? `${baseUrl}/${user.audition_video}` : null,
+        images: [],
+      },
     };
 
-    // ✅ Profile links grouped
-    responseData.profile_links = {
-      portfolio_link: user.portfolio_link || null,
-      imdb_profile: user.imdb_profile || null,
-      instagram_link: user.instagram_link || null,
-      facebook_link: user.showcase_facebook_link || null,
-      youtube_link: user.showcase_youtube_link || null,
-    };
-
-    // ✅ Media grouped
-    responseData.media = {
-      profile_image: user.image ? `${baseUrl}/${user.image}` : null,
-      headshot_image: user.headshot_image ? `${baseUrl}/${user.headshot_image}` : null,
-      full_image: user.full_image ? `${baseUrl}/${user.full_image}` : null,
-      audition_video: user.audition_video ? `${baseUrl}/${user.audition_video}` : null,
-      images: [],
-    };
-
-    // ✅ Multiple images from JSON
     if (user.images) {
       try {
         const parsedImages = JSON.parse(user.images);
         if (Array.isArray(parsedImages)) {
           responseData.media.images = parsedImages.map((img) => `${baseUrl}/${img}`);
         }
-      } catch (err) {
+      } catch {
         responseData.media.images = [];
       }
     }
 
-    res.status(200).json({
-      success: true,
-      data: responseData,
-    });
+    res.status(200).json({ success: true, data: responseData });
   } catch (error) {
     console.error("❌ getUserById error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 
 // ===================== JOB APPLICATION =====================
@@ -2659,8 +2652,6 @@ const getUserPlanHistory = async (req, res) => {
   }
 };
 
-
-
 // const CallsForYou = async (req, res) => {
  
 //   const userId = req.user.id;
@@ -2743,7 +2734,7 @@ const CallsForYou = async (req, res) => {
     }
     const user = userRows[0];
 
-    // 2️⃣ Fetch all active jobs (exclude already applied jobs)
+    // 2️⃣ Fetch all active jobs (exclude already applied jobs) - FIXED COLUMN NAME
     const [jobs] = await db.query(
       `SELECT j.* 
        FROM job j
@@ -2754,7 +2745,7 @@ const CallsForYou = async (req, res) => {
       [userId]
     );
 
-    // 3️⃣ Filtering logic
+    // 3️⃣ Filtering logic (unchanged)
     const applicableJobs = jobs.filter((job) => {
       // gender match
       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
