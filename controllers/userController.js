@@ -158,28 +158,28 @@
 //   plan_purchase_date DATE DEFAULT NULL,
 //   plan_auto_renew BOOLEAN DEFAULT FALSE,
 //   plan_price DECIMAL(10,2) DEFAULT 0.00,
-  
+
 //   -- Features (copied from plan at time of purchase)
 //   verified_actor_badge BOOLEAN DEFAULT FALSE,
 //   consolidated_profile BOOLEAN DEFAULT FALSE,
 //   free_learning_videos BOOLEAN DEFAULT FALSE,
 //   unlimited_applications BOOLEAN DEFAULT FALSE,
-  
+
 //   -- Notifications
 //   email_alerts BOOLEAN DEFAULT FALSE,
 //   whatsapp_alerts BOOLEAN DEFAULT FALSE,
-  
+
 //   -- Limits
 //   max_pics_upload INT DEFAULT 0,
 //   max_intro_videos INT DEFAULT 0,
 //   max_audition_videos INT DEFAULT 0,
 //   max_work_links INT DEFAULT 0,
-  
+
 //   -- Additional benefits
 //   masterclass_access BOOLEAN DEFAULT FALSE,
 //   showcase_featured BOOLEAN DEFAULT FALSE,
 //   reward_points_on_testimonial INT DEFAULT 0,
-  
+
 //   -- Plan usage tracking
 //   uploaded_pics_count INT DEFAULT 0,
 //   uploaded_intro_videos_count INT DEFAULT 0,
@@ -1094,7 +1094,7 @@
 //     await ensureUserPlanHistoryTable();
 //     // Get user ID from middleware (assuming it's attached to req.user)
 //     const userId = req.user.id;
-    
+
 //     // Get plan details from request body
 //     const { plan_id, auto_renew = false, payment_method, transaction_id } = req.body;
 
@@ -1109,7 +1109,7 @@
 //     // Check if the plan exists
 //    const [plan] = await db.query("SELECT * FROM plans WHERE id = ?", [plan_id]);
 
-    
+
 //     if (plan.length === 0) {
 //       return res.status(404).json({
 //         success: false,
@@ -1118,7 +1118,7 @@
 //     }
 
 //     const selectedPlan = plan[0];
-    
+
 //     // Calculate plan expiry date
 //     const purchaseDate = new Date();
 //     const expiryDate = new Date();
@@ -1162,7 +1162,7 @@
 //           uploaded_work_links_count = 0
 //         WHERE id = ?
 //       `;
-      
+
 //       await db.query(updateQuery, [
 //         selectedPlan.id, 
 //         selectedPlan.name, 
@@ -1198,7 +1198,7 @@
 //          masterclass_access, showcase_featured, reward_points_on_testimonial)
 //         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 //       `;
-      
+
 //       await db.query(historyQuery, [
 //         userId, 
 //         selectedPlan.id, 
@@ -1255,7 +1255,7 @@
 // const getUserPlan = async (req, res) => {
 //   try {
 //     const userId = req.user.id;
-    
+
 //     const [user] = await db.query(
 //       `SELECT 
 //         plan_id, plan_name, plan_price, plan_purchase_date, plan_expiry, plan_auto_renew,
@@ -1269,7 +1269,7 @@
 //        WHERE id = ?`,
 //       [userId]
 //     );
-    
+
 //     if (user.length === 0) {
 //       return res.status(404).json({
 //         success: false,
@@ -1294,7 +1294,7 @@
 // const getUserPlanHistory = async (req, res) => {
 //   try {
 //     const userId = req.user.id;
-    
+
 //     const [history] = await db.query(
 //       `SELECT *
 //        FROM user_plan_history
@@ -1302,7 +1302,7 @@
 //        ORDER BY purchase_date DESC`,
 //       [userId]
 //     );
-    
+
 //     res.status(200).json({
 //       success: true,
 //       data: history
@@ -1373,7 +1373,7 @@ const deleteOldFile = (filename, folder = "user_media") => {
 // ===================== REGISTER USER =================
 const registerUser = async (req, res) => {
   try {
-    const { pan_no, aadhaar_no, name, email, mobile, password } = req.body;
+    const { pan_no, aadhaar_no, name, email, mobile, password, SkillsData } = req.body;
 
     // Validate required fields
     if (!pan_no || !aadhaar_no || !name || !email || !mobile || !password) {
@@ -1490,6 +1490,7 @@ const registerUser = async (req, res) => {
         audition_video VARCHAR(255) DEFAULT NULL,
         portfolio_link VARCHAR(255) DEFAULT NULL,
         availabilities TEXT NULL,
+        SkillsData JSON DEFAULT NULL,
 
         -- Plan information
         plan_id BIGINT DEFAULT NULL,
@@ -1554,10 +1555,20 @@ const registerUser = async (req, res) => {
 
     // Insert new user
     await db.query(
-      `INSERT INTO users (pan_no, aadhaar_no, name, email, mobile, password, otp_code) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [pan_no, aadhaar_no, name, email, mobile, hashedPassword, otp]
+      `INSERT INTO users (pan_no, aadhaar_no, name, email, mobile, password, otp_code, SkillsData)
+   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        pan_no,
+        aadhaar_no,
+        name,
+        email,
+        mobile,
+        hashedPassword,
+        otp,
+        JSON.stringify(SkillsData || [])
+      ]
     );
+
 
     res.status(201).json({
       success: true,
@@ -1896,11 +1907,12 @@ const getProfile = async (req, res) => {
   }
 };
 
-// ===================== UPDATE PROFILE =================
+// ===================== UPDATE PROFILE =====================
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const updates = { ...req.body };
+    console.log("📌 Incoming updates:", updates);
 
     // Remove restricted fields
     const restricted = [
@@ -1914,82 +1926,58 @@ const updateProfile = async (req, res) => {
     ];
     restricted.forEach((field) => delete updates[field]);
 
-    // Handle single profile image
-    if (req.files && req.files.image) {
-      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [
-        userId,
-      ]);
-
-      if (rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
+    // ✅ Ensure JSON fields are stringified
+    const jsonFields = ["SkillsData", "availabilities", "images"];
+    jsonFields.forEach((field) => {
+      if (updates[field]) {
+        try {
+          updates[field] = JSON.stringify(updates[field]);
+        } catch (err) {
+          console.warn(`⚠️ Failed to stringify ${field}, storing as raw:`, updates[field]);
+        }
       }
+    });
 
+    // Handle single profile image
+    if (req.files?.image) {
+      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [userId]);
+      if (rows.length === 0) return res.status(404).json({ success: false, message: "User not found" });
       deleteOldFile(rows[0].image);
       updates.image = req.files.image[0].filename;
     }
 
     // Handle headshot image
-    if (req.files && req.files.headshot_image) {
-      const [rows] = await db.query(
-        "SELECT headshot_image FROM users WHERE id = ?",
-        [userId]
-      );
-
-      if (rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
+    if (req.files?.headshot_image) {
+      const [rows] = await db.query("SELECT headshot_image FROM users WHERE id = ?", [userId]);
+      if (rows.length === 0) return res.status(404).json({ success: false, message: "User not found" });
       deleteOldFile(rows[0].headshot_image);
       updates.headshot_image = req.files.headshot_image[0].filename;
     }
 
     // Handle full body image
-    if (req.files && req.files.full_image) {
-      const [rows] = await db.query(
-        "SELECT full_image FROM users WHERE id = ?",
-        [userId]
-      );
-
-      if (rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
+    if (req.files?.full_image) {
+      const [rows] = await db.query("SELECT full_image FROM users WHERE id = ?", [userId]);
+      if (rows.length === 0) return res.status(404).json({ success: false, message: "User not found" });
       deleteOldFile(rows[0].full_image);
       updates.full_image = req.files.full_image[0].filename;
     }
 
-    // Handle multiple images upload (append mode)
-    if (req.files && req.files.images) {
-      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [
-        userId,
-      ]);
+    // Handle multiple images (append mode)
+    if (req.files?.images) {
+      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [userId]);
       let currentImages = rows[0].images ? JSON.parse(rows[0].images) : [];
-
       const newImages = req.files.images.map((file) => file.filename);
       updates.images = JSON.stringify([...currentImages, ...newImages]);
     }
 
-    // Handle audition video upload
-    if (req.files && req.files.audition_video) {
-      const [rows] = await db.query(
-        "SELECT audition_video FROM users WHERE id = ?",
-        [userId]
-      );
-
+    // Handle audition video
+    if (req.files?.audition_video) {
+      const [rows] = await db.query("SELECT audition_video FROM users WHERE id = ?", [userId]);
       deleteOldFile(rows[0]?.audition_video);
       updates.audition_video = req.files.audition_video[0].filename;
     }
 
-    // Handle portfolio link
+    // Portfolio link cleanup
     if (updates.portfolio_link) {
       updates.portfolio_link = updates.portfolio_link.trim();
     }
@@ -2001,19 +1989,14 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    const setClause = Object.keys(updates)
-      .map((f) => `${f} = ?`)
-      .join(", ");
+    // Build SQL dynamically
+    const setClause = Object.keys(updates).map((f) => `${f} = ?`).join(", ");
     const values = Object.values(updates);
 
-    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [
-      ...values,
-      userId,
-    ]);
+    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [...values, userId]);
 
-    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [
-      userId,
-    ]);
+    // Fetch updated user
+    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
     delete updatedUser[0].password;
     delete updatedUser[0].otp_code;
 
@@ -2385,7 +2368,7 @@ const cancelApplication = async (req, res) => {
 
 const ensureUserPlanHistoryTable = async () => {
   try {
-   const query = `
+    const query = `
   CREATE TABLE IF NOT EXISTS user_plan_history (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -2429,7 +2412,7 @@ const updateUserPlan = async (req, res) => {
     await ensureUserPlanHistoryTable();
     // Get user ID from middleware (assuming it's attached to req.user)
     const userId = req.user.id;
-    
+
     // Get plan details from request body
     const { plan_id, auto_renew = false, payment_method, transaction_id } = req.body;
 
@@ -2442,9 +2425,9 @@ const updateUserPlan = async (req, res) => {
     }
 
     // Check if the plan exists
-   const [plan] = await db.query("SELECT * FROM plans WHERE id = ?", [plan_id]);
+    const [plan] = await db.query("SELECT * FROM plans WHERE id = ?", [plan_id]);
 
-    
+
     if (plan.length === 0) {
       return res.status(404).json({
         success: false,
@@ -2453,7 +2436,7 @@ const updateUserPlan = async (req, res) => {
     }
 
     const selectedPlan = plan[0];
-    
+
     // Calculate plan expiry date
     const purchaseDate = new Date();
     const expiryDate = new Date();
@@ -2497,14 +2480,14 @@ const updateUserPlan = async (req, res) => {
           uploaded_work_links_count = 0
         WHERE id = ?
       `;
-      
+
       await db.query(updateQuery, [
-        selectedPlan.id, 
-        selectedPlan.name, 
+        selectedPlan.id,
+        selectedPlan.name,
         selectedPlan.name,
         selectedPlan.price,
-        formattedPurchaseDate, 
-        formattedExpiryDate, 
+        formattedPurchaseDate,
+        formattedExpiryDate,
         auto_renew,
         selectedPlan.verified_actor_badge,
         selectedPlan.consolidated_profile,
@@ -2533,16 +2516,16 @@ const updateUserPlan = async (req, res) => {
          masterclass_access, showcase_featured, reward_points_on_testimonial)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      
+
       await db.query(historyQuery, [
-        userId, 
-        selectedPlan.id, 
+        userId,
+        selectedPlan.id,
         selectedPlan.name,
-        formattedPurchaseDate, 
-        formattedExpiryDate, 
+        formattedPurchaseDate,
+        formattedExpiryDate,
         selectedPlan.price,
-        payment_method, 
-        transaction_id, 
+        payment_method,
+        transaction_id,
         auto_renew,
         selectedPlan.verified_actor_badge,
         selectedPlan.consolidated_profile,
@@ -2590,7 +2573,7 @@ const updateUserPlan = async (req, res) => {
 const getUserPlan = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const [user] = await db.query(
       `SELECT 
         plan_id, plan_name, plan_price, plan_purchase_date, plan_expiry, plan_auto_renew,
@@ -2604,7 +2587,7 @@ const getUserPlan = async (req, res) => {
        WHERE id = ?`,
       [userId]
     );
-    
+
     if (user.length === 0) {
       return res.status(404).json({
         success: false,
@@ -2629,7 +2612,7 @@ const getUserPlan = async (req, res) => {
 const getUserPlanHistory = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     const [history] = await db.query(
       `SELECT *
        FROM user_plan_history
@@ -2637,7 +2620,7 @@ const getUserPlanHistory = async (req, res) => {
        ORDER BY purchase_date DESC`,
       [userId]
     );
-    
+
     res.status(200).json({
       success: true,
       data: history
@@ -2651,10 +2634,8 @@ const getUserPlanHistory = async (req, res) => {
   }
 };
 
+// const CallsForYou = async (req, res) => {
 
-
-//  const CallsForYou = async (req, res) => {
- 
 //   const userId = req.user.id;
 
 //   try {
@@ -2725,7 +2706,6 @@ const getUserPlanHistory = async (req, res) => {
 //   }
 // };
 
-
 const CallsForYou = async (req, res) => {
   const userId = req.user.id;
 
@@ -2737,22 +2717,30 @@ const CallsForYou = async (req, res) => {
     }
     const user = userRows[0];
 
-    // 2️⃣ Fetch all active jobs
-    const [jobs] = await db.query(`SELECT * FROM job WHERE status = 1`);
-
-    // 3️⃣ Fetch jobs user has already applied for
+    // Debug: Check what jobs user has already applied for
     const [appliedJobs] = await db.query(
       `SELECT job_id FROM job_applications WHERE user_id = ?`,
       [userId]
     );
-    
-    const appliedJobIds = appliedJobs.map(job => job.job_id);
-    console.log('User has applied for job IDs:', appliedJobIds);
+    console.log('User has applied for these job IDs:', appliedJobs.map(j => j.job_id));
 
-    // 4️⃣ Filtering logic
+    // 2️⃣ Fetch all active jobs using LEFT JOIN approach (more reliable)
+    const [jobs] = await db.query(
+      `SELECT j.* 
+       FROM job j
+       LEFT JOIN job_applications ja ON j.id = ja.job_id AND ja.user_id = ?
+       WHERE j.status = 1 
+       AND ja.job_id IS NULL`,
+      [userId]
+    );
+
+    console.log('Total jobs found after filtering applied ones:', jobs.length);
+
+    // 3️⃣ Filtering logic
     const applicableJobs = jobs.filter((job) => {
       // gender match
       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
+        console.log('Filtered by gender:', job.id);
         return false;
       }
 
@@ -2760,6 +2748,7 @@ const CallsForYou = async (req, res) => {
       if (job.language_required && user.language) {
         const userLanguages = user.language.split(",").map((l) => l.trim().toLowerCase());
         if (!userLanguages.includes(job.language_required.toLowerCase())) {
+          console.log('Filtered by language:', job.id);
           return false;
         }
       }
@@ -2771,12 +2760,18 @@ const CallsForYou = async (req, res) => {
         );
         const [minAge, maxAge] = job.age_range.split("-").map((n) => parseInt(n));
         if (age < minAge || age > maxAge) {
+          console.log('Filtered by age:', job.id);
           return false;
         }
       }
 
       // body type check
-      if (job.body_type && user.body_type && job.body_type.toLowerCase() !== user.body_type.toLowerCase()) {
+      if (
+        job.body_type &&
+        user.body_type &&
+        job.body_type.toLowerCase() !== user.body_type.toLowerCase()
+      ) {
+        console.log('Filtered by body type:', job.id);
         return false;
       }
 
@@ -2785,18 +2780,22 @@ const CallsForYou = async (req, res) => {
         const jobSkills = job.skills_needed.toLowerCase().split(",");
         const userSkills = user.skills.toLowerCase().split(",");
         const matched = jobSkills.some((skill) => userSkills.includes(skill.trim()));
-        if (!matched) return false;
+        if (!matched) {
+          console.log('Filtered by skills:', job.id);
+          return false;
+        }
       }
 
       return true;
     });
 
-    // 5️⃣ Response - include applied_job_ids so frontend can filter/hide them
+    console.log('Final applicable jobs:', applicableJobs.length);
+
+    // 4️⃣ Response
     res.status(200).json({
       success: true,
       total_jobs: applicableJobs.length,
       jobs: applicableJobs,
-      applied_job_ids: appliedJobIds // Send this to frontend
     });
   } catch (error) {
     console.error("❌ CallsForYou error:", error);
@@ -2806,7 +2805,6 @@ const CallsForYou = async (req, res) => {
     });
   }
 };
-
 
 
 
