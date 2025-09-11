@@ -2651,7 +2651,9 @@ const getUserPlanHistory = async (req, res) => {
   }
 };
 
-// const CallsForYou = async (req, res) => {
+
+
+//  const CallsForYou = async (req, res) => {
  
 //   const userId = req.user.id;
 
@@ -2723,6 +2725,7 @@ const getUserPlanHistory = async (req, res) => {
 //   }
 // };
 
+
 const CallsForYou = async (req, res) => {
   const userId = req.user.id;
 
@@ -2734,30 +2737,22 @@ const CallsForYou = async (req, res) => {
     }
     const user = userRows[0];
 
-    // Debug: Check what jobs user has already applied for
+    // 2️⃣ Fetch all active jobs
+    const [jobs] = await db.query(`SELECT * FROM job WHERE status = 1`);
+
+    // 3️⃣ Fetch jobs user has already applied for
     const [appliedJobs] = await db.query(
       `SELECT job_id FROM job_applications WHERE user_id = ?`,
       [userId]
     );
-    console.log('User has applied for these job IDs:', appliedJobs.map(j => j.job_id));
+    
+    const appliedJobIds = appliedJobs.map(job => job.job_id);
+    console.log('User has applied for job IDs:', appliedJobIds);
 
-    // 2️⃣ Fetch all active jobs using LEFT JOIN approach (more reliable)
-    const [jobs] = await db.query(
-      `SELECT j.* 
-       FROM job j
-       LEFT JOIN job_applications ja ON j.id = ja.job_id AND ja.user_id = ?
-       WHERE j.status = 1 
-       AND ja.job_id IS NULL`,
-      [userId]
-    );
-
-    console.log('Total jobs found after filtering applied ones:', jobs.length);
-
-    // 3️⃣ Filtering logic
+    // 4️⃣ Filtering logic
     const applicableJobs = jobs.filter((job) => {
       // gender match
       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
-        console.log('Filtered by gender:', job.id);
         return false;
       }
 
@@ -2765,7 +2760,6 @@ const CallsForYou = async (req, res) => {
       if (job.language_required && user.language) {
         const userLanguages = user.language.split(",").map((l) => l.trim().toLowerCase());
         if (!userLanguages.includes(job.language_required.toLowerCase())) {
-          console.log('Filtered by language:', job.id);
           return false;
         }
       }
@@ -2777,18 +2771,12 @@ const CallsForYou = async (req, res) => {
         );
         const [minAge, maxAge] = job.age_range.split("-").map((n) => parseInt(n));
         if (age < minAge || age > maxAge) {
-          console.log('Filtered by age:', job.id);
           return false;
         }
       }
 
       // body type check
-      if (
-        job.body_type &&
-        user.body_type &&
-        job.body_type.toLowerCase() !== user.body_type.toLowerCase()
-      ) {
-        console.log('Filtered by body type:', job.id);
+      if (job.body_type && user.body_type && job.body_type.toLowerCase() !== user.body_type.toLowerCase()) {
         return false;
       }
 
@@ -2797,22 +2785,18 @@ const CallsForYou = async (req, res) => {
         const jobSkills = job.skills_needed.toLowerCase().split(",");
         const userSkills = user.skills.toLowerCase().split(",");
         const matched = jobSkills.some((skill) => userSkills.includes(skill.trim()));
-        if (!matched) {
-          console.log('Filtered by skills:', job.id);
-          return false;
-        }
+        if (!matched) return false;
       }
 
       return true;
     });
 
-    console.log('Final applicable jobs:', applicableJobs.length);
-
-    // 4️⃣ Response
+    // 5️⃣ Response - include applied_job_ids so frontend can filter/hide them
     res.status(200).json({
       success: true,
       total_jobs: applicableJobs.length,
       jobs: applicableJobs,
+      applied_job_ids: appliedJobIds // Send this to frontend
     });
   } catch (error) {
     console.error("❌ CallsForYou error:", error);
@@ -2822,6 +2806,7 @@ const CallsForYou = async (req, res) => {
     });
   }
 };
+
 
 
 
