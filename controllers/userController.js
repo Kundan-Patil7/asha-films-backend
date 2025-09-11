@@ -1751,7 +1751,7 @@ const resendOTP = async (req, res) => {
   }
 };
 
-// ===================== FORGOT PASSWORD =====================
+// ===================== FORGOT PASSWORD ================
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -1794,7 +1794,7 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// ===================== RESET PASSWORD =====================
+// ===================== RESET PASSWORD =================
 const resetPassword = async (req, res) => {
   try {
     const { email, newPassword } = req.body;
@@ -1833,7 +1833,7 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// ===================== GET PROFILE =====================
+// ===================== GET PROFILE ====================
 const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1896,7 +1896,7 @@ const getProfile = async (req, res) => {
   }
 };
 
-// ===================== UPDATE PROFILE =====================
+// ===================== UPDATE PROFILE =================
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -2031,7 +2031,7 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// ===================== GET USER BY ID =====================
+// ===================== GET USER BY ID =================
 const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -2102,8 +2102,7 @@ const getUserById = async (req, res) => {
   }
 };
 
-
-// ===================== JOB APPLICATION =====================
+// ===================== JOB APPLICATION ================
 const jobApply = async (req, res) => {
   try {
     // Ensure table exists with correct structure
@@ -2269,7 +2268,7 @@ const jobApply = async (req, res) => {
   }
 };
 
-// ===================== GET MY APPLICATIONS =====================
+// ===================== GET MY APPLICATIONS ============
 const getMyApplications = async (req, res) => {
   try {
     const user_id = req.user.id;
@@ -2339,7 +2338,7 @@ const getMyApplications = async (req, res) => {
   }
 };
 
-// ===================== CANCEL APPLICATION =====================
+// ===================== CANCEL APPLICATION =============
 const cancelApplication = async (req, res) => {
   try {
     const { application_id } = req.params;
@@ -2723,6 +2722,7 @@ const getUserPlanHistory = async (req, res) => {
 //     });
 //   }
 // };
+
 const CallsForYou = async (req, res) => {
   const userId = req.user.id;
 
@@ -2734,21 +2734,30 @@ const CallsForYou = async (req, res) => {
     }
     const user = userRows[0];
 
-    // 2️⃣ Fetch all active jobs (exclude already applied jobs) - FIXED COLUMN NAME
+    // Debug: Check what jobs user has already applied for
+    const [appliedJobs] = await db.query(
+      `SELECT job_id FROM job_applications WHERE user_id = ?`,
+      [userId]
+    );
+    console.log('User has applied for these job IDs:', appliedJobs.map(j => j.job_id));
+
+    // 2️⃣ Fetch all active jobs using LEFT JOIN approach (more reliable)
     const [jobs] = await db.query(
       `SELECT j.* 
        FROM job j
+       LEFT JOIN job_applications ja ON j.id = ja.job_id AND ja.user_id = ?
        WHERE j.status = 1 
-       AND j.id NOT IN (
-         SELECT job_id FROM job_applications WHERE user_id = ?
-       )`,
+       AND ja.job_id IS NULL`,
       [userId]
     );
 
-    // 3️⃣ Filtering logic (unchanged)
+    console.log('Total jobs found after filtering applied ones:', jobs.length);
+
+    // 3️⃣ Filtering logic
     const applicableJobs = jobs.filter((job) => {
       // gender match
       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
+        console.log('Filtered by gender:', job.id);
         return false;
       }
 
@@ -2756,6 +2765,7 @@ const CallsForYou = async (req, res) => {
       if (job.language_required && user.language) {
         const userLanguages = user.language.split(",").map((l) => l.trim().toLowerCase());
         if (!userLanguages.includes(job.language_required.toLowerCase())) {
+          console.log('Filtered by language:', job.id);
           return false;
         }
       }
@@ -2767,6 +2777,7 @@ const CallsForYou = async (req, res) => {
         );
         const [minAge, maxAge] = job.age_range.split("-").map((n) => parseInt(n));
         if (age < minAge || age > maxAge) {
+          console.log('Filtered by age:', job.id);
           return false;
         }
       }
@@ -2777,6 +2788,7 @@ const CallsForYou = async (req, res) => {
         user.body_type &&
         job.body_type.toLowerCase() !== user.body_type.toLowerCase()
       ) {
+        console.log('Filtered by body type:', job.id);
         return false;
       }
 
@@ -2785,11 +2797,16 @@ const CallsForYou = async (req, res) => {
         const jobSkills = job.skills_needed.toLowerCase().split(",");
         const userSkills = user.skills.toLowerCase().split(",");
         const matched = jobSkills.some((skill) => userSkills.includes(skill.trim()));
-        if (!matched) return false;
+        if (!matched) {
+          console.log('Filtered by skills:', job.id);
+          return false;
+        }
       }
 
       return true;
     });
+
+    console.log('Final applicable jobs:', applicableJobs.length);
 
     // 4️⃣ Response
     res.status(200).json({
