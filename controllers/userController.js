@@ -2724,7 +2724,7 @@ const CallsForYou = async (req, res) => {
     );
     console.log('User has applied for these job IDs:', appliedJobs.map(j => j.job_id));
 
-    // 2️⃣ Fetch all active jobs using LEFT JOIN approach (more reliable)
+    // 2️⃣ Fetch all active jobs
     const [jobs] = await db.query(
       `SELECT j.* 
        FROM job j
@@ -2736,7 +2736,7 @@ const CallsForYou = async (req, res) => {
 
     console.log('Total jobs found after filtering applied ones:', jobs.length);
 
-    // 3️⃣ Filtering logic
+    // 3️⃣ Filtering logic (skills check removed)
     const applicableJobs = jobs.filter((job) => {
       // gender match
       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
@@ -2775,16 +2775,7 @@ const CallsForYou = async (req, res) => {
         return false;
       }
 
-      // skills check
-      if (job.skills_needed && user.skills) {
-        const jobSkills = job.skills_needed.toLowerCase().split(",");
-        const userSkills = user.skills.toLowerCase().split(",");
-        const matched = jobSkills.some((skill) => userSkills.includes(skill.trim()));
-        if (!matched) {
-          console.log('Filtered by skills:', job.id);
-          return false;
-        }
-      }
+      // ❌ skills check removed
 
       return true;
     });
@@ -2805,6 +2796,7 @@ const CallsForYou = async (req, res) => {
     });
   }
 };
+
 
 
 
