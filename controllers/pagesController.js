@@ -97,6 +97,7 @@ const filterUsers = async (req, res) => {
       sortOrder,
       page = 1,
       limit = 10,
+      category, 
     } = req.body;
 
     // Base query
@@ -122,7 +123,10 @@ const filterUsers = async (req, res) => {
       query += ` AND gender IN (?)`;
       values.push(gender);
     }
-
+    if (category && typeof category === "string" && category.trim() !== "" && category !== "All") {
+      query += ` AND JSON_CONTAINS(SkillsData, ?)`;
+      values.push(JSON.stringify([category])); // e.g. '["ACTORS & ACTRESS"]'
+    }
     // Age range filter
     if (Array.isArray(ageRange) && ageRange.length > 0) {
       const ageConditions = ageRange.map((range) => {
