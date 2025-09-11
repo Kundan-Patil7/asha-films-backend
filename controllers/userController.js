@@ -2048,55 +2048,55 @@ const getUserById = async (req, res) => {
     }
 
     let user = rows[0];
-
-    // Remove sensitive/unnecessary fields
-    const sensitiveFields = [
-      "password",
-      "otp_code",
-      "blocked",
-      "suspended",
-      "suspended_from",
-      "suspended_to",
-      "is_verified",
-    ];
-    sensitiveFields.forEach((field) => delete user[field]);
-
     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media`;
 
-    // Convert image fields into full URLs
-    if (user.image) {
-      user.image = `${baseUrl}/${user.image}`;
-    }
+    // ✅ Basic info
+    const responseData = {
+      id: user.id,
+      name: user.name,
+      gender: user.gender,
+      city: user.city,
+      height: user.height,
+      hair_color: user.hair_color,
+      shoe_size: user.shoe_size,
+      eye_color: user.eye_color,
+      availabilities: user.availabilities,
+      skills: user.skills,
+    };
 
-    if (user.headshot_image) {
-      user.headshot_image = `${baseUrl}/${user.headshot_image}`;
-    }
+    // ✅ Profile links grouped
+    responseData.profile_links = {
+      portfolio_link: user.portfolio_link || null,
+      imdb_profile: user.imdb_profile || null,
+      instagram_link: user.instagram_link || null,
+      facebook_link: user.showcase_facebook_link || null,
+      youtube_link: user.showcase_youtube_link || null,
+    };
 
-    if (user.full_image) {
-      user.full_image = `${baseUrl}/${user.full_image}`;
-    }
+    // ✅ Media grouped
+    responseData.media = {
+      profile_image: user.image ? `${baseUrl}/${user.image}` : null,
+      headshot_image: user.headshot_image ? `${baseUrl}/${user.headshot_image}` : null,
+      full_image: user.full_image ? `${baseUrl}/${user.full_image}` : null,
+      audition_video: user.audition_video ? `${baseUrl}/${user.audition_video}` : null,
+      images: [],
+    };
 
-    if (user.audition_video) {
-      user.audition_video = `${baseUrl}/${user.audition_video}`;
-    }
-
-    // Convert images JSON into array of URLs
+    // ✅ Multiple images from JSON
     if (user.images) {
       try {
         const parsedImages = JSON.parse(user.images);
         if (Array.isArray(parsedImages)) {
-          user.images = parsedImages.map((img) => `${baseUrl}/${img}`);
-        } else {
-          user.images = [];
+          responseData.media.images = parsedImages.map((img) => `${baseUrl}/${img}`);
         }
       } catch (err) {
-        user.images = [];
+        responseData.media.images = [];
       }
     }
 
     res.status(200).json({
       success: true,
-      data: user,
+      data: responseData,
     });
   } catch (error) {
     console.error("❌ getUserById error:", error);
@@ -2106,6 +2106,8 @@ const getUserById = async (req, res) => {
     });
   }
 };
+
+
 
 // ===================== JOB APPLICATION =====================
 const jobApply = async (req, res) => {
@@ -2658,8 +2660,78 @@ const getUserPlanHistory = async (req, res) => {
 
 
 
-const CallsForYou = async (req, res) => {
+// const CallsForYou = async (req, res) => {
  
+//   const userId = req.user.id;
+
+//   try {
+//     // 1️⃣ Fetch user info
+//     const [userRows] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
+//     if (userRows.length === 0) {
+//       return res.status(404).json({ success: false, message: "User not found" });
+//     }
+//     const user = userRows[0];
+
+//     // 2️⃣ Fetch all jobs
+//     const [jobs] = await db.query(`SELECT * FROM job WHERE status = 1`); // only active jobs
+
+//     // 3️⃣ Filtering logic
+//     const applicableJobs = jobs.filter((job) => {
+//       // gender match
+//       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
+//         return false;
+//       }
+
+//       // language check
+//       if (job.language_required && user.language) {
+//         const userLanguages = user.language.split(",").map((l) => l.trim().toLowerCase());
+//         if (!userLanguages.includes(job.language_required.toLowerCase())) {
+//           return false;
+//         }
+//       }
+
+//       // age check
+//       if (job.age_range && user.date_of_birth) {
+//         const age = Math.floor(
+//           (new Date() - new Date(user.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000)
+//         );
+//         const [minAge, maxAge] = job.age_range.split("-").map((n) => parseInt(n));
+//         if (age < minAge || age > maxAge) {
+//           return false;
+//         }
+//       }
+
+//       // body type check
+//       if (job.body_type && user.body_type && job.body_type.toLowerCase() !== user.body_type.toLowerCase()) {
+//         return false;
+//       }
+
+//       // skills check
+//       if (job.skills_needed && user.skills) {
+//         const jobSkills = job.skills_needed.toLowerCase().split(",");
+//         const userSkills = user.skills.toLowerCase().split(",");
+//         const matched = jobSkills.some((skill) => userSkills.includes(skill.trim()));
+//         if (!matched) return false;
+//       }
+
+//       return true;
+//     });
+
+//     // 4️⃣ Response
+//     res.status(200).json({
+//       success: true,
+//       total_jobs: applicableJobs.length,
+//       jobs: applicableJobs,
+//     });
+//   } catch (error) {
+//     console.error("❌ CallsForYou error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//     });
+//   }
+// };
+const CallsForYou = async (req, res) => {
   const userId = req.user.id;
 
   try {
@@ -2670,8 +2742,16 @@ const CallsForYou = async (req, res) => {
     }
     const user = userRows[0];
 
-    // 2️⃣ Fetch all jobs
-    const [jobs] = await db.query(`SELECT * FROM job WHERE status = 1`); // only active jobs
+    // 2️⃣ Fetch all active jobs (exclude already applied jobs)
+    const [jobs] = await db.query(
+      `SELECT j.* 
+       FROM job j
+       WHERE j.status = 1 
+       AND j.id NOT IN (
+         SELECT job_id FROM job_applications WHERE user_id = ?
+       )`,
+      [userId]
+    );
 
     // 3️⃣ Filtering logic
     const applicableJobs = jobs.filter((job) => {
@@ -2700,7 +2780,11 @@ const CallsForYou = async (req, res) => {
       }
 
       // body type check
-      if (job.body_type && user.body_type && job.body_type.toLowerCase() !== user.body_type.toLowerCase()) {
+      if (
+        job.body_type &&
+        user.body_type &&
+        job.body_type.toLowerCase() !== user.body_type.toLowerCase()
+      ) {
         return false;
       }
 
@@ -2729,6 +2813,8 @@ const CallsForYou = async (req, res) => {
     });
   }
 };
+
+
 
 // ===================== EXPORTS =====================
 module.exports = {
