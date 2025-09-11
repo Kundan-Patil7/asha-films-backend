@@ -149,8 +149,7 @@
 //         portfolio_link VARCHAR(255) DEFAULT NULL,
 //         availabilities TEXT NULL,
 
-
-// -- the below fields will get change when thir plans will ger updated 
+// -- the below fields will get change when thir plans will ger updated
 //  -- Basic plan information
 //   plan_id BIGINT DEFAULT NULL,
 //   plan_name VARCHAR(55) DEFAULT 'free',
@@ -214,7 +213,7 @@
 
 //     // Insert new user
 //     await db.query(
-//       `INSERT INTO users (pan_no, aadhaar_no, name, email, mobile, password, otp_code) 
+//       `INSERT INTO users (pan_no, aadhaar_no, name, email, mobile, password, otp_code)
 //        VALUES (?, ?, ?, ?, ?, ?, ?)`,
 //       [pan_no, aadhaar_no, name, email, mobile, hashedPassword, otp]
 //     );
@@ -814,8 +813,8 @@
 //     // Verify the job exists and is active
 //     const [jobCheck] = await db.query(
 //       `
-//       SELECT id, production_house_id, project_type, application_deadline 
-//       FROM job 
+//       SELECT id, production_house_id, project_type, application_deadline
+//       FROM job
 //       WHERE id = ?
 //     `,
 //       [job_id]
@@ -844,8 +843,8 @@
 //     // Check if user already applied for this job
 //     const [existing] = await db.query(
 //       `
-//       SELECT application_id 
-//       FROM job_applications 
+//       SELECT application_id
+//       FROM job_applications
 //       WHERE user_id = ? AND job_id = ?
 //     `,
 //       [user_id, job_id]
@@ -862,8 +861,8 @@
 //     // Insert new application
 //     const [result] = await db.query(
 //       `
-//       INSERT INTO job_applications 
-//       (status, role_specific_info, job_id, user_id, travel, availability, previous_work, courses) 
+//       INSERT INTO job_applications
+//       (status, role_specific_info, job_id, user_id, travel, availability, previous_work, courses)
 //       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 //     `,
 //       [status, role_specific_info, job_id, user_id, travel, availability, previous_work, courses]
@@ -872,7 +871,7 @@
 //     // Get the complete application data for response
 //     const [applicationData] = await db.query(
 //       `
-//       SELECT 
+//       SELECT
 //         ja.*,
 //         j.project_type,
 //         j.role_type,
@@ -939,7 +938,7 @@
 //     const user_id = req.user.id;
 
 //     const sql = `
-//       SELECT 
+//       SELECT
 //         ja.application_id,
 //         ja.status,
 //         ja.role_specific_info,
@@ -1010,8 +1009,8 @@
 //     // Verify application belongs to user
 //     const [check] = await db.query(
 //       `
-//       SELECT application_id 
-//       FROM job_applications 
+//       SELECT application_id
+//       FROM job_applications
 //       WHERE application_id = ? AND user_id = ?
 //     `,
 //       [application_id, user_id]
@@ -1026,7 +1025,7 @@
 
 //     await db.query(
 //       `
-//       DELETE FROM job_applications 
+//       DELETE FROM job_applications
 //       WHERE application_id = ? AND user_id = ?
 //     `,
 //       [application_id, user_id]
@@ -1045,7 +1044,6 @@
 //     });
 //   }
 // };
-
 
 // const ensureUserPlanHistoryTable = async () => {
 //   try {
@@ -1081,7 +1079,6 @@
 //   )
 // `;
 
-
 //     await db.query(query);
 //     console.log("✅ user_plan_history table ensured!");
 //   } catch (err) {
@@ -1109,7 +1106,6 @@
 //     // Check if the plan exists
 //    const [plan] = await db.query("SELECT * FROM plans WHERE id = ?", [plan_id]);
 
-
 //     if (plan.length === 0) {
 //       return res.status(404).json({
 //         success: false,
@@ -1134,14 +1130,14 @@
 //     try {
 //       // Update user's current plan with all features
 //       const updateQuery = `
-//         UPDATE users 
-//         SET 
-//           plan_id = ?, 
-//           plan_name = ?, 
+//         UPDATE users
+//         SET
+//           plan_id = ?,
+//           plan_name = ?,
 //            plan = ?,
 //           plan_price = ?,
-//           plan_purchase_date = ?, 
-//           plan_expiry = ?, 
+//           plan_purchase_date = ?,
+//           plan_expiry = ?,
 //           plan_auto_renew = ?,
 //           verified_actor_badge = ?,
 //           consolidated_profile = ?,
@@ -1164,12 +1160,12 @@
 //       `;
 
 //       await db.query(updateQuery, [
-//         selectedPlan.id, 
-//         selectedPlan.name, 
+//         selectedPlan.id,
+//         selectedPlan.name,
 //         selectedPlan.name,
 //         selectedPlan.price,
-//         formattedPurchaseDate, 
-//         formattedExpiryDate, 
+//         formattedPurchaseDate,
+//         formattedExpiryDate,
 //         auto_renew,
 //         selectedPlan.verified_actor_badge,
 //         selectedPlan.consolidated_profile,
@@ -1189,25 +1185,25 @@
 
 //       // Record in plan history with all features
 //       const historyQuery = `
-//         INSERT INTO user_plan_history 
-//         (user_id, plan_id, plan_name, purchase_date, expiry_date, amount_paid, 
+//         INSERT INTO user_plan_history
+//         (user_id, plan_id, plan_name, purchase_date, expiry_date, amount_paid,
 //          payment_method, transaction_id, auto_renew,
 //          verified_actor_badge, consolidated_profile, free_learning_videos,
 //          unlimited_applications, email_alerts, whatsapp_alerts,
-//          max_pics_upload, max_intro_videos, max_audition_videos, max_work_links, 
+//          max_pics_upload, max_intro_videos, max_audition_videos, max_work_links,
 //          masterclass_access, showcase_featured, reward_points_on_testimonial)
 //         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 //       `;
 
 //       await db.query(historyQuery, [
-//         userId, 
-//         selectedPlan.id, 
+//         userId,
+//         selectedPlan.id,
 //         selectedPlan.name,
-//         formattedPurchaseDate, 
-//         formattedExpiryDate, 
+//         formattedPurchaseDate,
+//         formattedExpiryDate,
 //         selectedPlan.price,
-//         payment_method, 
-//         transaction_id, 
+//         payment_method,
+//         transaction_id,
 //         auto_renew,
 //         selectedPlan.verified_actor_badge,
 //         selectedPlan.consolidated_profile,
@@ -1257,15 +1253,15 @@
 //     const userId = req.user.id;
 
 //     const [user] = await db.query(
-//       `SELECT 
+//       `SELECT
 //         plan_id, plan_name, plan_price, plan_purchase_date, plan_expiry, plan_auto_renew,
 //         verified_actor_badge, consolidated_profile, free_learning_videos,
 //         unlimited_applications, email_alerts, whatsapp_alerts,
-//         max_pics_upload, max_intro_videos, max_audition_videos, max_work_links, 
-//         masterclass_access, showcase_featured, reward_points_on_testimonial, 
+//         max_pics_upload, max_intro_videos, max_audition_videos, max_work_links,
+//         masterclass_access, showcase_featured, reward_points_on_testimonial,
 //         uploaded_pics_count, uploaded_intro_videos_count,
 //         uploaded_audition_videos_count, uploaded_work_links_count
-//        FROM users 
+//        FROM users
 //        WHERE id = ?`,
 //       [userId]
 //     );
@@ -1316,10 +1312,6 @@
 //   }
 // };
 
-
-
-
-
 // // ===================== EXPORTS =====================
 // module.exports = {
 //   registerUser,
@@ -1338,7 +1330,6 @@
 //   getUserPlan,
 //   getUserPlanHistory
 // };
-
 
 const db = require("../config/database");
 const bcrypt = require("bcryptjs");
@@ -1373,7 +1364,8 @@ const deleteOldFile = (filename, folder = "user_media") => {
 // ===================== REGISTER USER =================
 const registerUser = async (req, res) => {
   try {
-    const { pan_no, aadhaar_no, name, email, mobile, password, SkillsData } = req.body;
+    const { pan_no, aadhaar_no, name, email, mobile, password, SkillsData } =
+      req.body;
 
     // Validate required fields
     if (!pan_no || !aadhaar_no || !name || !email || !mobile || !password) {
@@ -1565,10 +1557,9 @@ const registerUser = async (req, res) => {
         mobile,
         hashedPassword,
         otp,
-        JSON.stringify(SkillsData || [])
+        JSON.stringify(SkillsData || []),
       ]
     );
-
 
     res.status(201).json({
       success: true,
@@ -1933,38 +1924,60 @@ const updateProfile = async (req, res) => {
         try {
           updates[field] = JSON.stringify(updates[field]);
         } catch (err) {
-          console.warn(`⚠️ Failed to stringify ${field}, storing as raw:`, updates[field]);
+          console.warn(
+            `⚠️ Failed to stringify ${field}, storing as raw:`,
+            updates[field]
+          );
         }
       }
     });
 
     // Handle single profile image
     if (req.files?.image) {
-      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [userId]);
-      if (rows.length === 0) return res.status(404).json({ success: false, message: "User not found" });
+      const [rows] = await db.query("SELECT image FROM users WHERE id = ?", [
+        userId,
+      ]);
+      if (rows.length === 0)
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
       deleteOldFile(rows[0].image);
       updates.image = req.files.image[0].filename;
     }
 
     // Handle headshot image
     if (req.files?.headshot_image) {
-      const [rows] = await db.query("SELECT headshot_image FROM users WHERE id = ?", [userId]);
-      if (rows.length === 0) return res.status(404).json({ success: false, message: "User not found" });
+      const [rows] = await db.query(
+        "SELECT headshot_image FROM users WHERE id = ?",
+        [userId]
+      );
+      if (rows.length === 0)
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
       deleteOldFile(rows[0].headshot_image);
       updates.headshot_image = req.files.headshot_image[0].filename;
     }
 
     // Handle full body image
     if (req.files?.full_image) {
-      const [rows] = await db.query("SELECT full_image FROM users WHERE id = ?", [userId]);
-      if (rows.length === 0) return res.status(404).json({ success: false, message: "User not found" });
+      const [rows] = await db.query(
+        "SELECT full_image FROM users WHERE id = ?",
+        [userId]
+      );
+      if (rows.length === 0)
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
       deleteOldFile(rows[0].full_image);
       updates.full_image = req.files.full_image[0].filename;
     }
 
     // Handle multiple images (append mode)
     if (req.files?.images) {
-      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [userId]);
+      const [rows] = await db.query("SELECT images FROM users WHERE id = ?", [
+        userId,
+      ]);
       let currentImages = rows[0].images ? JSON.parse(rows[0].images) : [];
       const newImages = req.files.images.map((file) => file.filename);
       updates.images = JSON.stringify([...currentImages, ...newImages]);
@@ -1972,7 +1985,10 @@ const updateProfile = async (req, res) => {
 
     // Handle audition video
     if (req.files?.audition_video) {
-      const [rows] = await db.query("SELECT audition_video FROM users WHERE id = ?", [userId]);
+      const [rows] = await db.query(
+        "SELECT audition_video FROM users WHERE id = ?",
+        [userId]
+      );
       deleteOldFile(rows[0]?.audition_video);
       updates.audition_video = req.files.audition_video[0].filename;
     }
@@ -1990,13 +2006,20 @@ const updateProfile = async (req, res) => {
     }
 
     // Build SQL dynamically
-    const setClause = Object.keys(updates).map((f) => `${f} = ?`).join(", ");
+    const setClause = Object.keys(updates)
+      .map((f) => `${f} = ?`)
+      .join(", ");
     const values = Object.values(updates);
 
-    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [...values, userId]);
+    await db.query(`UPDATE users SET ${setClause} WHERE id = ?`, [
+      ...values,
+      userId,
+    ]);
 
     // Fetch updated user
-    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
+    const [updatedUser] = await db.query(`SELECT * FROM users WHERE id = ?`, [
+      userId,
+    ]);
     delete updatedUser[0].password;
     delete updatedUser[0].otp_code;
 
@@ -2033,7 +2056,9 @@ const getUserById = async (req, res) => {
     );
 
     if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     let user = rows[0];
@@ -2060,9 +2085,13 @@ const getUserById = async (req, res) => {
       },
       media: {
         profile_image: user.image ? `${baseUrl}/${user.image}` : null,
-        headshot_image: user.headshot_image ? `${baseUrl}/${user.headshot_image}` : null,
+        headshot_image: user.headshot_image
+          ? `${baseUrl}/${user.headshot_image}`
+          : null,
         full_image: user.full_image ? `${baseUrl}/${user.full_image}` : null,
-        audition_video: user.audition_video ? `${baseUrl}/${user.audition_video}` : null,
+        audition_video: user.audition_video
+          ? `${baseUrl}/${user.audition_video}`
+          : null,
         images: [],
       },
     };
@@ -2071,7 +2100,9 @@ const getUserById = async (req, res) => {
       try {
         const parsedImages = JSON.parse(user.images);
         if (Array.isArray(parsedImages)) {
-          responseData.media.images = parsedImages.map((img) => `${baseUrl}/${img}`);
+          responseData.media.images = parsedImages.map(
+            (img) => `${baseUrl}/${img}`
+          );
         }
       } catch {
         responseData.media.images = [];
@@ -2184,7 +2215,16 @@ const jobApply = async (req, res) => {
       (status, role_specific_info, job_id, user_id, travel, availability, previous_work, courses) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
-      [status, role_specific_info, job_id, user_id, travel, availability, previous_work, courses]
+      [
+        status,
+        role_specific_info,
+        job_id,
+        user_id,
+        travel,
+        availability,
+        previous_work,
+        courses,
+      ]
     );
 
     // Get the complete application data for response
@@ -2300,7 +2340,12 @@ const getMyApplications = async (req, res) => {
         city_location: app.city_location,
         compensation: app.compensation,
         production_house_name: app.production_house_name,
-        status: app.job_status === 1 ? "Approved" : app.job_status === 2 ? "Rejected" : "Pending",
+        status:
+          app.job_status === 1
+            ? "Approved"
+            : app.job_status === 2
+            ? "Rejected"
+            : "Pending",
         image_url: constructImageUrl(req, "jobCovers", app.job_image),
       },
     }));
@@ -2414,7 +2459,12 @@ const updateUserPlan = async (req, res) => {
     const userId = req.user.id;
 
     // Get plan details from request body
-    const { plan_id, auto_renew = false, payment_method, transaction_id } = req.body;
+    const {
+      plan_id,
+      auto_renew = false,
+      payment_method,
+      transaction_id,
+    } = req.body;
 
     // Validate required fields
     if (!plan_id) {
@@ -2425,8 +2475,9 @@ const updateUserPlan = async (req, res) => {
     }
 
     // Check if the plan exists
-    const [plan] = await db.query("SELECT * FROM plans WHERE id = ?", [plan_id]);
-
+    const [plan] = await db.query("SELECT * FROM plans WHERE id = ?", [
+      plan_id,
+    ]);
 
     if (plan.length === 0) {
       return res.status(404).json({
@@ -2443,8 +2494,8 @@ const updateUserPlan = async (req, res) => {
     expiryDate.setDate(expiryDate.getDate() + selectedPlan.duration_in_days);
 
     // Format dates for MySQL
-    const formattedPurchaseDate = purchaseDate.toISOString().split('T')[0];
-    const formattedExpiryDate = expiryDate.toISOString().split('T')[0];
+    const formattedPurchaseDate = purchaseDate.toISOString().split("T")[0];
+    const formattedExpiryDate = expiryDate.toISOString().split("T")[0];
 
     // Start transaction
     await db.query("START TRANSACTION");
@@ -2502,7 +2553,7 @@ const updateUserPlan = async (req, res) => {
         selectedPlan.masterclass_access,
         selectedPlan.showcase_featured,
         selectedPlan.reward_points_on_testimonial,
-        userId
+        userId,
       ]);
 
       // Record in plan history with all features
@@ -2539,7 +2590,7 @@ const updateUserPlan = async (req, res) => {
         selectedPlan.max_work_links,
         selectedPlan.masterclass_access,
         selectedPlan.showcase_featured,
-        selectedPlan.reward_points_on_testimonial
+        selectedPlan.reward_points_on_testimonial,
       ]);
 
       // Commit transaction
@@ -2552,8 +2603,8 @@ const updateUserPlan = async (req, res) => {
           plan: selectedPlan.name,
           purchase_date: formattedPurchaseDate,
           expiry_date: formattedExpiryDate,
-          auto_renew: auto_renew
-        }
+          auto_renew: auto_renew,
+        },
       });
     } catch (error) {
       // Rollback transaction on error
@@ -2597,7 +2648,7 @@ const getUserPlan = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: user[0]
+      data: user[0],
     });
   } catch (error) {
     console.error("❌ getUserPlan error:", error);
@@ -2623,7 +2674,7 @@ const getUserPlanHistory = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: history
+      data: history,
     });
   } catch (error) {
     console.error("❌ getUserPlanHistory error:", error);
@@ -2711,9 +2762,13 @@ const CallsForYou = async (req, res) => {
 
   try {
     // 1️⃣ Fetch user info
-    const [userRows] = await db.query(`SELECT * FROM users WHERE id = ?`, [userId]);
+    const [userRows] = await db.query(`SELECT * FROM users WHERE id = ?`, [
+      userId,
+    ]);
     if (userRows.length === 0) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
     const user = userRows[0];
 
@@ -2722,7 +2777,10 @@ const CallsForYou = async (req, res) => {
       `SELECT job_id FROM job_applications WHERE user_id = ?`,
       [userId]
     );
-    console.log('User has applied for these job IDs:', appliedJobs.map(j => j.job_id));
+    console.log(
+      "User has applied for these job IDs:",
+      appliedJobs.map((j) => j.job_id)
+    );
 
     // 2️⃣ Fetch all active jobs
     const [jobs] = await db.query(
@@ -2734,21 +2792,23 @@ const CallsForYou = async (req, res) => {
       [userId]
     );
 
-    console.log('Total jobs found after filtering applied ones:', jobs.length);
+    console.log("Total jobs found after filtering applied ones:", jobs.length);
 
     // 3️⃣ Filtering logic (skills check removed)
     const applicableJobs = jobs.filter((job) => {
       // gender match
       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
-        console.log('Filtered by gender:', job.id);
+        console.log("Filtered by gender:", job.id);
         return false;
       }
 
       // language check
       if (job.language_required && user.language) {
-        const userLanguages = user.language.split(",").map((l) => l.trim().toLowerCase());
+        const userLanguages = user.language
+          .split(",")
+          .map((l) => l.trim().toLowerCase());
         if (!userLanguages.includes(job.language_required.toLowerCase())) {
-          console.log('Filtered by language:', job.id);
+          console.log("Filtered by language:", job.id);
           return false;
         }
       }
@@ -2756,11 +2816,14 @@ const CallsForYou = async (req, res) => {
       // age check
       if (job.age_range && user.date_of_birth) {
         const age = Math.floor(
-          (new Date() - new Date(user.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000)
+          (new Date() - new Date(user.date_of_birth)) /
+            (365.25 * 24 * 60 * 60 * 1000)
         );
-        const [minAge, maxAge] = job.age_range.split("-").map((n) => parseInt(n));
+        const [minAge, maxAge] = job.age_range
+          .split("-")
+          .map((n) => parseInt(n));
         if (age < minAge || age > maxAge) {
-          console.log('Filtered by age:', job.id);
+          console.log("Filtered by age:", job.id);
           return false;
         }
       }
@@ -2771,7 +2834,7 @@ const CallsForYou = async (req, res) => {
         user.body_type &&
         job.body_type.toLowerCase() !== user.body_type.toLowerCase()
       ) {
-        console.log('Filtered by body type:', job.id);
+        console.log("Filtered by body type:", job.id);
         return false;
       }
 
@@ -2780,7 +2843,7 @@ const CallsForYou = async (req, res) => {
       return true;
     });
 
-    console.log('Final applicable jobs:', applicableJobs.length);
+    console.log("Final applicable jobs:", applicableJobs.length);
 
     // 4️⃣ Response
     res.status(200).json({
@@ -2796,9 +2859,6 @@ const CallsForYou = async (req, res) => {
     });
   }
 };
-
-
-
 
 // ===================== EXPORTS =====================
 module.exports = {
