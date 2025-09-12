@@ -2783,99 +2783,58 @@ const CallsForYou = async (req, res) => {
       userId,
     ]);
     if (userRows.length === 0) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
     const user = userRows[0];
 
-    // Debug: Check what jobs user has already applied for
-    const [appliedJobs] = await db.query(
-      `SELECT job_id FROM job_applications WHERE user_id = ?`,
-      [userId]
-    );
-    console.log(
-      "User has applied for these job IDs:",
-      appliedJobs.map((j) => j.job_id)
-    );
-
-    // 2️⃣ Fetch all active jobs
+    // 2️⃣ Get active jobs that user hasn’t applied for
     const [jobs] = await db.query(
       `SELECT j.* 
        FROM job j
-       LEFT JOIN job_applications ja ON j.id = ja.job_id AND ja.user_id = ?
+       LEFT JOIN job_applications ja 
+         ON j.id = ja.job_id AND ja.user_id = ?
        WHERE j.status = 1 
-       AND ja.job_id IS NULL`,
+         AND ja.job_id IS NULL`,
       [userId]
     );
 
-    console.log("Total jobs found after filtering applied ones:", jobs.length);
-
-    // 3️⃣ Filtering logic (skills check removed)
+    // 3️⃣ Filter only by gender & age
     const applicableJobs = jobs.filter((job) => {
-      // gender match
+      // --- Gender ---
       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
-        console.log("Filtered by gender:", job.id);
         return false;
       }
 
-      // language check
-      if (job.language_required && user.language) {
-        const userLanguages = user.language
-          .split(",")
-          .map((l) => l.trim().toLowerCase());
-        if (!userLanguages.includes(job.language_required.toLowerCase())) {
-          console.log("Filtered by language:", job.id);
-          return false;
-        }
-      }
-
-      // age check
+      // --- Age ---
       if (job.age_range && user.date_of_birth) {
         const age = Math.floor(
-          (new Date() - new Date(user.date_of_birth)) /
-            (365.25 * 24 * 60 * 60 * 1000)
+          (Date.now() - new Date(user.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000)
         );
-        const [minAge, maxAge] = job.age_range
-          .split("-")
-          .map((n) => parseInt(n));
-        if (age < minAge || age > maxAge) {
-          console.log("Filtered by age:", job.id);
-          return false;
-        }
+        const [minAge, maxAge] = job.age_range.split("-").map((n) => parseInt(n));
+        if (age < minAge || age > maxAge) return false;
       }
-
-      // body type check
-      if (
-        job.body_type &&
-        user.body_type &&
-        job.body_type.toLowerCase() !== user.body_type.toLowerCase()
-      ) {
-        console.log("Filtered by body type:", job.id);
-        return false;
-      }
-
-      // ❌ skills check removed
 
       return true;
     });
 
-    console.log("Final applicable jobs:", applicableJobs.length);
+    // 4️⃣ Attach image URL (column = `image`)
+    const jobsWithImage = applicableJobs.map((job) => ({
+      ...job,
+      image: constructImageUrl(req, "jobCovers", job.image),
+    }));
 
-    // 4️⃣ Response
+    // 5️⃣ Respond
     res.status(200).json({
       success: true,
-      total_jobs: applicableJobs.length,
-      jobs: applicableJobs,
+      total_jobs: jobsWithImage.length,
+      jobs: jobsWithImage,
     });
   } catch (error) {
     console.error("❌ CallsForYou error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 // ===================== EXPORTS =====================
 module.exports = {

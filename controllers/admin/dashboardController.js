@@ -271,7 +271,7 @@ const getAllTransactions = async (req, res) => {
 };
 
 
-const getDashboardData = async (req, res) => {
+const   getDashboardData = async (req, res) => {
   try {
     // 1. Total users
     const [usersCount] = await db.query(`SELECT COUNT(*) as totalUsers FROM users`);
