@@ -2331,7 +2331,8 @@ const getMyApplications = async (req, res) => {
         j.compensation,
         j.production_house_name,
         j.image as job_image,
-        j.status as job_status
+        j.status as job_status,
+        j.application_deadline
       FROM job_applications ja
       JOIN job j ON ja.job_id = j.id
       WHERE ja.user_id = ?
@@ -2364,6 +2365,7 @@ const getMyApplications = async (req, res) => {
             ? "Rejected"
             : "Pending",
         image_url: constructImageUrl(req, "jobCovers", app.job_image),
+        application_deadline: app.application_deadline, // Added expiry date
       },
     }));
 
@@ -2382,7 +2384,6 @@ const getMyApplications = async (req, res) => {
     });
   }
 };
-
 // ===================== CANCEL APPLICATION =============
 const cancelApplication = async (req, res) => {
   try {
