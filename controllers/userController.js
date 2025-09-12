@@ -2038,6 +2038,7 @@ const updateProfile = async (req, res) => {
 };
 
 // ===================== GET USER BY ID =================
+// ...existing code...
 const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -2045,7 +2046,7 @@ const getUserById = async (req, res) => {
     const [rows] = await db.query(
       `SELECT 
         id, name, gender, city, height, hair_color, shoe_size, eye_color,
-        availabilities, skills, date_of_birth,
+        availabilities, skills, date_of_birth, SkillsData,
         portfolio_link, imdb_profile, instagram_link, 
         showcase_facebook_link, showcase_youtube_link,
         image, headshot_image, full_image, audition_video, images
@@ -2064,6 +2065,18 @@ const getUserById = async (req, res) => {
     let user = rows[0];
     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media`;
 
+    // Parse SkillsData if it's a JSON string
+    let skillsData = [];
+    if (user.SkillsData) {
+      try {
+        skillsData = typeof user.SkillsData === "string"
+          ? JSON.parse(user.SkillsData)
+          : user.SkillsData;
+      } catch {
+        skillsData = [];
+      }
+    }
+
     const responseData = {
       id: user.id,
       name: user.name,
@@ -2076,6 +2089,7 @@ const getUserById = async (req, res) => {
       availabilities: user.availabilities,
       skills: user.skills,
       date_of_birth: user.date_of_birth,
+      SkillsData: skillsData,
       profile_links: {
         portfolio_link: user.portfolio_link || null,
         imdb_profile: user.imdb_profile || null,
@@ -2098,7 +2112,9 @@ const getUserById = async (req, res) => {
 
     if (user.images) {
       try {
-        const parsedImages = JSON.parse(user.images);
+        const parsedImages = typeof user.images === "string"
+          ? JSON.parse(user.images)
+          : user.images;
         if (Array.isArray(parsedImages)) {
           responseData.media.images = parsedImages.map(
             (img) => `${baseUrl}/${img}`
@@ -2115,6 +2131,7 @@ const getUserById = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+// ...existing code...
 
 // ===================== JOB APPLICATION ================
 const jobApply = async (req, res) => {

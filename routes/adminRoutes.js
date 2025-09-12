@@ -1,7 +1,7 @@
 const express = require("express");
 const { adminLogin, profile } = require("../controllers/admin/authController");
 const verifyAdmin = require("../middleware/admin");
-const { fetchTickets, allUsers, blockUser, suspendUser, unsuspendUser, changePlan, approveJob,getAllTransactions } = require("../controllers/admin/dashboardController");
+const { fetchTickets, allUsers, blockUser, suspendUser, unsuspendUser, changePlan, approveJob,getAllTransactions, getDashboardData } = require("../controllers/admin/dashboardController");
 const router = express.Router();
 
 // Admin login
@@ -23,6 +23,8 @@ router.put("/admin/users/block", blockUser);
 router.put("/admin/users/suspend", suspendUser);
 router.put("/admin/users/unsuspend", unsuspendUser);
 router.put("/admin/users/change-plan", changePlan);
+// Dashboard Data
+router.get("/admin/dashboard", getDashboardData);
 
 router.get("/admin/transactions", getAllTransactions);
 

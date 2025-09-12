@@ -271,6 +271,65 @@ const getAllTransactions = async (req, res) => {
 };
 
 
+const getDashboardData = async (req, res) => {
+  try {
+    // 1. Total users
+    const [usersCount] = await db.query(`SELECT COUNT(*) as totalUsers FROM users`);
+ 
+    // 2. Premium users
+    const [premiumUsers] = await db.query(`SELECT COUNT(*) as premiumUsers FROM users WHERE plan = 'premium'`);
+ 
+    // 3. Normal (free) users
+    const [normalUsers] = await db.query(`SELECT COUNT(*) as normalUsers FROM users WHERE plan = 'free'`);
+ 
+    // 4. Premium earnings (premium users × plan price from plans table)
+    const [premiumPlan] = await db.query(`SELECT price FROM plans WHERE name = 'premium' LIMIT 1`);
+    const premiumEarnings = premiumUsers[0].premiumUsers * (premiumPlan[0]?.price || 0);
+ 
+    // 5. Total jobs
+    const [totalJobs] = await db.query(`SELECT COUNT(*) as totalJobs FROM job`);
+ 
+    // 6. Expired jobs (application_deadline < today)
+    const [expiredJobs] = await db.query(`
+      SELECT COUNT(*) as expiredJobs 
+      FROM job 
+      WHERE application_deadline IS NOT NULL AND application_deadline < CURDATE()
+    `);
+ 
+    // 7. Live jobs (application_deadline >= today OR no deadline)
+    const [liveJobs] = await db.query(`
+      SELECT COUNT(*) as liveJobs 
+      FROM job 
+      WHERE application_deadline IS NULL OR application_deadline >= CURDATE()
+    `);
+ 
+    res.json({
+      success: true,
+      data: {
+        users: {
+          total: usersCount[0].totalUsers,
+          premium: premiumUsers[0].premiumUsers,
+          normal: normalUsers[0].normalUsers,
+        },
+        earnings: {
+          premiumEarnings,
+          premiumPlanPrice: premiumPlan[0]?.price || 0
+        },
+        jobs: {
+          total: totalJobs[0].totalJobs,
+          expired: expiredJobs[0].expiredJobs,
+          live: liveJobs[0].liveJobs
+        },
+        liveJobsOnly: liveJobs[0].liveJobs
+      }
+    });
+ 
+  } catch (error) {
+    console.error("Dashboard Data Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching dashboard data" });
+  }
+};
+
 
 module.exports = {
   fetchTickets,
@@ -282,6 +341,5 @@ module.exports = {
   createTicket,
   approveJob,
   getAllTransactions,
-
-
+  getDashboardData
 };
