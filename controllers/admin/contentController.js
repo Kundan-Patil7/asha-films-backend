@@ -26,7 +26,7 @@ async function removeFileIfExists(filePath) {
 
 // Helper function to build file URL
 function buildFileUrl(req, filename, folder = "banners") {
-  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+  return `https://dev.1on1screen.com/uploads/${folder}/${filename}`;
 }
 
 // Initialize banners table
@@ -734,7 +734,7 @@ const getAllFeaturedArtists = async (req, res) => {
   try {
     const [rows] = await db.query("SELECT * FROM featured_artists");
 
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/artists/`;
+    const baseUrl = `https://dev.1on1screen.com/uploads/artists/`;
 
     const artists = rows.map((artist) => ({
       id: artist.id,

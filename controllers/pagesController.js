@@ -20,7 +20,7 @@ const getHomeData = async (req, res) => {
     const formattedBirthdayArtists = birthdayArtists.map((artist) => ({
       name: artist.name,
       image: artist.image
-        ? `${req.protocol}://${req.get("host")}/uploads/user_media/${artist.image}`
+        ? `https://dev.1on1screen.com/uploads/user_media/${artist.image}`
         : null,
     }));
 
@@ -56,7 +56,7 @@ const getHomeData = async (req, res) => {
 
     // Format featured artists with image URLs
     const formattedFeaturedArtists = featuredArtists.map((artist) => ({
-      image: `${req.protocol}://${req.get("host")}/uploads/artists/${artist.image}`,
+      image: `https://dev.1on1screen.com/uploads/artists/${artist.image}`,
     }));
 
     res.status(200).json({
@@ -81,7 +81,7 @@ const getHomeData = async (req, res) => {
 
 const filterUsers = async (req, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/user_media/`;
+    const baseUrl = `https://dev.1on1screen.com/uploads/user_media/`;
 
     // Extract filters + pagination + sorting
     const {

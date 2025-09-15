@@ -15,13 +15,13 @@ const generateOTP = () =>
 // Helper function to construct file URLs
 const getFileUrl = (req, folder, filename) => {
   if (!filename) return null;
-  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+  return `https://dev.1on1screen.com/uploads/${folder}/${filename}`;
 };
 
 // Helper function to construct image URLs
 const constructImageUrl = (req, folder, filename) => {
   if (!filename) return null;
-  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+  return `https://dev.1on1screen.com/uploads/${folder}/${filename}`;
 };
 
 // Helper function to delete old files
