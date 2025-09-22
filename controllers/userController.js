@@ -1456,22 +1456,35 @@ const CallsForYou = async (req, res) => {
     }
     const user = userRows[0];
 
-    // 2️⃣ Get active jobs that user hasn’t applied for
+    // 2️⃣ Get active jobs that user hasn't applied for AND are not expired
     const [jobs] = await db.query(
       `SELECT j.* 
        FROM job j
        LEFT JOIN job_applications ja 
          ON j.id = ja.job_id AND ja.user_id = ?
        WHERE j.status = 1 
-           AND ja.job_id IS NULL
-         AND (j.application_deadline IS NULL OR j.application_deadline >= NOW())`,
+         AND ja.job_id IS NULL
+         AND (j.application_deadline IS NULL OR j.application_deadline >= NOW())
+       ORDER BY j.created_at DESC`, // Added ordering for consistency
       [userId]
     );
 
-    // 3️⃣ Filter only by gender & age
+    console.log(`Total jobs from DB query: ${jobs.length}`);
+
+    // 3️⃣ Filter by gender & age
     const applicableJobs = jobs.filter((job) => {
+      // Debug: log each job's deadline
+      console.log(`Job ID: ${job.id}, Deadline: ${job.application_deadline}, Now: ${new Date()}`);
+      
+      // Double-check deadline (in case of timezone issues)
+      if (job.application_deadline && new Date(job.application_deadline) < new Date()) {
+        console.log(`Job ${job.id} expired: ${job.application_deadline}`);
+        return false;
+      }
+
       // --- Gender ---
       if (job.gender && job.gender !== "Other" && job.gender !== user.gender) {
+        console.log(`Job ${job.id} filtered by gender: ${job.gender} vs ${user.gender}`);
         return false;
       }
 
@@ -1481,13 +1494,18 @@ const CallsForYou = async (req, res) => {
           (Date.now() - new Date(user.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000)
         );
         const [minAge, maxAge] = job.age_range.split("-").map((n) => parseInt(n));
-        if (age < minAge || age > maxAge) return false;
+        if (age < minAge || age > maxAge) {
+          console.log(`Job ${job.id} filtered by age: ${age} not in range ${job.age_range}`);
+          return false;
+        }
       }
 
       return true;
     });
 
-    // 4️⃣ Attach image URL (column = `image`)
+    console.log(`Applicable jobs after filtering: ${applicableJobs.length}`);
+
+    // 4️⃣ Attach image URL
     const jobsWithImage = applicableJobs.map((job) => ({
       ...job,
       image: constructImageUrl(req, "jobCovers", job.image),
@@ -1504,7 +1522,6 @@ const CallsForYou = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
 
 // ===================== EXPORTS =====================
 module.exports = {
