@@ -738,8 +738,8 @@ const getUserById = async (req, res) => {
     if (user.SkillsData) {
       try {
         skillsData = typeof user.SkillsData === "string"
-          ? JSON.parse(user.SkillsData)
-          : user.SkillsData;
+            ? JSON.parse(user.SkillsData)
+            : user.SkillsData;
       } catch {
         skillsData = [];
       }
@@ -781,8 +781,8 @@ const getUserById = async (req, res) => {
     if (user.images) {
       try {
         const parsedImages = typeof user.images === "string"
-          ? JSON.parse(user.images)
-          : user.images;
+            ? JSON.parse(user.images)
+            : user.images;
         if (Array.isArray(parsedImages)) {
           responseData.media.images = parsedImages.map(
             (img) => `${baseUrl}/${img}`
@@ -1336,7 +1336,7 @@ const getUserPlan = async (req, res) => {
       success: true,
       data: user[0],
     });
-  } catch (error) {
+  } catch (error) { 
     console.error("❌ getUserPlan error:", error);
     res.status(500).json({
       success: false,
@@ -1463,7 +1463,8 @@ const CallsForYou = async (req, res) => {
        LEFT JOIN job_applications ja 
          ON j.id = ja.job_id AND ja.user_id = ?
        WHERE j.status = 1 
-         AND ja.job_id IS NULL`,
+           AND ja.job_id IS NULL
+         AND (j.application_deadline IS NULL OR j.application_deadline >= NOW())`,
       [userId]
     );
 
